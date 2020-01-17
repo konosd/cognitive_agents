@@ -1,0 +1,31 @@
+Run cogmap_gfort_coor_zigg.f:
+Marked as (for realisation number): 1001
+np: 200..600..200
+tau (nvirt): 20..60..20
+timestep: 100000
+date: 1102
+directory: raw1102_test
+
+
+Run cogmap_gfort_coor_zigg.f:
+Marked as (for realisation number): 1111
+np 50 tau 20;
+np 50 tau 60;
+np 100 tau 20;
+timestep: 100000
+date: 1202
+directory: rawld (low density)
+
+
+Run cogmap_gfort_coor_zigg_nvt40.f; cogmap_gfort_coor_zigg_nvt72; cogmap_gfort_coor_zigg_nvt720:
+Marked as (for realisation number): 4001; 7201; 72001
+np: 50 200 400;
+tau: 20 60;
+timestep: 100000
+date: 1202
+directory: rawnvt (change number of virtual traj)
+
+
+
+
+

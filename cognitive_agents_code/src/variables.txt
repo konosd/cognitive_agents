@@ -1,0 +1,17 @@
+N_AGENT       np
+N_STEP        nsteps
+N_VTRAJ       nvtraj
+N_VSTEP       tau
+DIAMETER      2*sigma
+BOX_LENGTH    L
+TIMESTEP      dt
+VREPUL_TYPE   vrepultype
+REPUL_TYPE    repultype
+FRICTION      gamma
+TEMPERATURE   temp
+PI            pi
+TAU           2*pi
+
+coordinates   R
+velocities    V
+
