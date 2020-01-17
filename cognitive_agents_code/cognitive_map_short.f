@@ -1,7 +1,9 @@
 c Cognitive map model
 c (c) Maksym Romenskyy
 c  22 Dec 2018
-       
+c Hello World
+
+
        PROGRAM cognitive
          implicit none
 
