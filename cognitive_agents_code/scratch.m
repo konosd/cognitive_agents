@@ -16,6 +16,7 @@ repul_exp = 60.0;
 agent_velo = zeros(n_agent,2);
 agent_coor = initialize_agents(n_agent, sigma, box_length);
 
+force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
 
 
 plot_agents(agent_coor, sigma, box_length)
@@ -37,6 +38,7 @@ function plot_agents(agent_coordinates, diameter, box_length)
         thisX = diameter * 0.5 * cos(theta) + xCenter;
         thisY = diameter * 0.5 * sin(theta) + yCenter;
         plot(xCenter, yCenter, 'r+', 'MarkerSize', 10, 'LineWidth', 1);
+        text(xCenter, yCenter, num2str(k));
         hold on;
         plot(thisX, thisY, 'b-', 'LineWidth', 2);
     end
@@ -102,9 +104,29 @@ function force_rep = hard_repulsion(agent_coordinates, diameter, area, strength)
     force_rep = zeros(length(agent_coordinates), 2);
     for i = 1:length(agent_coordinates)
         for j = 1:length(agent_coordinates)
-            if i ~= j && norm(agent_coordinates[i,:] - agent_coordinates[j,:]) 
-                
-                
+            x_dist = norm(agent_coordinates(i,1) - agent_coordinates(j,1));
+            y_dist = norm(agent_coordinates(i,2) - agent_coordinates(j,2));
+            if x_dist > 0.5 * area
+                x_dist = area - x_dist;
+            end
+            if y_dist > 0.5 * area
+                y_dist = area - y_dist;
+            end
+            ag_dist = sqrt(x_dist^2 + y_dist^2);
+            if i ~= j && ag_dist < 2 * diameter
+                theta = atan((agent_coordinates(i,2)-agent_coordinates(j,2))/ ...
+                    (agent_coordinates(i,1)-agent_coordinates(j,1)));
+                magnitude = strength*(2*diameter - ag_dist)
+                force_rep(i,1) = force_rep(i,1) + magnitude * ...
+                    (agent_coordinates(i,1)-agent_coordinates(j,1))/ ...
+                    ag_dist;
+                force_rep(i,2) = force_rep(i,2) + magnitude * ...
+                    (agent_coordinates(i,2)-agent_coordinates(j,2))/ ...
+                    ag_dist;
+            end
         end
     end
 end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+               
