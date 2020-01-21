@@ -1,6 +1,6 @@
 % parameters, number of agents, trajectories, etc.
 n_agent = 20;       %number of agents
-n_vsteps = 20;      %number of virtual steps
+n_vsteps = 200;      %number of virtual steps
 n_steps = 20;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 5;          %diameter
@@ -12,42 +12,99 @@ noise = sqrt(2.0*friction*temperature/timestep);
 repul_strength = 20.0;
 repul_exp = 60.0;
 
-
+% ------------- Initialization-- ------------------------------------------
 agent_velo = zeros(n_agent,2);
 agent_coor = initialize_agents(n_agent, sigma, box_length);
-
 force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
+plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% -------------------------------------------------------------------------
+
+for tr=1:10
+    
+    [hail, mary] = virtual_traj(agent_coor, agent_velo, 1, n_vsteps, ...
+    sigma, box_length, repul_strength, friction, noise, timestep)
 
 
-plot_agents(agent_coor, sigma, box_length)
+
+    plot_trajectory(hail,box_length, rand(1,3))
+
+end
+
+
+
 
 % ---------------------- End of main --------------------------------------
 % -------------------------------------------------------------------------
-% ------------- Helper Functions ------------------------------------------
+% --------------------- Helper Functions ----------------------------------
 % -------------------------------------------------------------------------
 
 
+
 % -------------------------------------------------------------------------
-% ------------- Function to plot screenshot--------------------------------
+% -------------------- Sample from Bivariate Distribution -----------------
 % -------------------------------------------------------------------------
-function plot_agents(agent_coordinates, diameter, box_length)
-    theta = 0:0.01:2*pi;
-    for k = 1: length(agent_coordinates)
-        xCenter = agent_coordinates(k,1);
-        yCenter = agent_coordinates(k,2);
-        thisX = diameter * 0.5 * cos(theta) + xCenter;
-        thisY = diameter * 0.5 * sin(theta) + yCenter;
-        plot(xCenter, yCenter, 'r+', 'MarkerSize', 10, 'LineWidth', 1);
-        text(xCenter, yCenter, num2str(k));
-        hold on;
-        plot(thisX, thisY, 'b-', 'LineWidth', 2);
-    end
-    grid on;
-    xlim([0, box_length]);
-    ylim([0,box_length])
+function bivar_random = bivariate_normal( samples )
+    bivar_random = repmat( [0 0], samples, 1) + ...
+        randn(samples, 2) * [1 0; 0 1];
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% -------------------- Virtual Trajectory ---------------------------------
+% -------------------------------------------------------------------------
+% i is the agent we are investigating
+
+function [traj_coor, traj_velo] = virtual_traj(agent_coor, agent_velo, i, ...
+    n_virt_steps, diameter, area, strength, friction, noise, dt)
+    
+    % First element is the real one, so updating number of virtual time
+    % steps
+    n_virt_steps = n_virt_steps + 1;
+    
+    % Initialize vectors of path and velocities
+    traj_coor = zeros(n_virt_steps,2);
+    traj_velo = zeros(n_virt_steps,2);
+    grid_coor = agent_coor;
+    
+    % Generate random numbers for noise for every step
+    virt_steps_noise = noise * bivariate_normal(n_virt_steps);
+    
+    
+    % starting the iteration for the first virtual timestep
+    traj_coor(1,:) = agent_coor(i,:);
+    traj_velo(1,:) = agent_velo(i,:);
+    
+    f_rep = hard_repulsion_agent(agent_coor, i, diameter, area, strength);
+    f_langevin = -friction * traj_velo(1,:) + virt_steps_noise(1,:);
+    f_tot = f_langevin + f_rep;
+    traj_coor(2,:) = traj_coor(1,:) + traj_velo(1,:)* dt + ...
+        0.5 * f_tot * (dt^2) ;
+    traj_velo(2,:) = traj_velo(1,:) + f_tot* dt ;
+    
+    % Update the grid;
+    grid_coor(i,:) = traj_coor(2,:);
+    
+    for j=3:n_virt_steps
+        % find repulsion force for step
+        f_rep = hard_repulsion_agent(grid_coor, i, diameter, area, strength);
+        f_langevin = -friction * traj_velo(j-1,:) + virt_steps_noise(j,:);
+        f_tot = f_rep + f_langevin;
+        % update velocity and position of virtual timestep
+        traj_velo(j,:) = traj_velo(j-1,:) + f_tot * dt;
+        traj_coor(j,:) = 2 * traj_coor(j-1,:) - traj_coor(j-2,:) + ...
+            f_tot * (dt^2);
+        % update the grid:
+        traj_coor(j,:) = mod(traj_coor(j,:),area);
+        grid_coor(i,:) = traj_coor(j,:);
+    end
+    
+end
+
+
+
+
 
 
 
@@ -104,29 +161,106 @@ function force_rep = hard_repulsion(agent_coordinates, diameter, area, strength)
     force_rep = zeros(length(agent_coordinates), 2);
     for i = 1:length(agent_coordinates)
         for j = 1:length(agent_coordinates)
-            x_dist = norm(agent_coordinates(i,1) - agent_coordinates(j,1));
-            y_dist = norm(agent_coordinates(i,2) - agent_coordinates(j,2));
-            if x_dist > 0.5 * area
-                x_dist = area - x_dist;
+            Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
+            Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
+            if Dx > 0.5 * area
+                Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
+            elseif Dx < -0.5 *area
+                Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
             end
-            if y_dist > 0.5 * area
-                y_dist = area - y_dist;
+            if Dy > 0.5 * area
+                Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
+            elseif Dy < -0.5 *area
+                Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
             end
-            ag_dist = sqrt(x_dist^2 + y_dist^2);
+            ag_dist = sqrt(Dx^2 + Dy^2);
             if i ~= j && ag_dist < 2 * diameter
-                theta = atan((agent_coordinates(i,2)-agent_coordinates(j,2))/ ...
-                    (agent_coordinates(i,1)-agent_coordinates(j,1)));
-                magnitude = strength*(2*diameter - ag_dist)
-                force_rep(i,1) = force_rep(i,1) + magnitude * ...
-                    (agent_coordinates(i,1)-agent_coordinates(j,1))/ ...
-                    ag_dist;
-                force_rep(i,2) = force_rep(i,2) + magnitude * ...
-                    (agent_coordinates(i,2)-agent_coordinates(j,2))/ ...
-                    ag_dist;
+                magnitude = strength*(2*diameter - ag_dist);
+                force_rep(i,1) = force_rep(i,1) + magnitude * Dx/ ag_dist;
+                force_rep(i,2) = force_rep(i,2) + magnitude * Dy/ ag_dist;
             end
         end
     end
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
+
+
+
+% -------------------------------------------------------------------------
+% ------------- Hardcore Repulsion for One Agent---------------------------
+% -------------------------------------------------------------------------
+function force_rep = hard_repulsion_agent(agent_coordinates, i, ...
+        diameter, area, strength)
+    force_rep = zeros(1, 2);
+    for j = 1:length(agent_coordinates)
+        Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
+        Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
+        if Dx > 0.5 * area
+            Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
+        elseif Dx < -0.5 *area
+            Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
+        end
+        if Dy > 0.5 * area
+            Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
+        elseif Dy < -0.5 *area
+            Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
+        end
+        ag_dist = sqrt(Dx^2 + Dy^2);
+        if i ~= j && ag_dist < 2 * diameter
+            magnitude = strength*(2*diameter - ag_dist);
+            force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
+            force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
+        end
+    end
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
                
+
+
+% -------------------------------------------------------------------------
+% ------------- Function to plot screenshot--------------------------------
+% -------------------------------------------------------------------------
+function plot_agents(agent_coordinates, diameter, box_length, forces, scl)
+    theta = 0:0.01:2*pi;
+    for k = 1: length(agent_coordinates)
+        xCenter = agent_coordinates(k,1);
+        yCenter = agent_coordinates(k,2);
+        thisX = diameter * 0.5 * cos(theta) + xCenter;
+        thisY = diameter * 0.5 * sin(theta) + yCenter;
+        plot(xCenter, yCenter, 'r+', 'MarkerSize', 10, 'LineWidth', 1);
+        text(xCenter, yCenter, num2str(k));
+        hold on;
+        plot(thisX, thisY, 'b-', 'LineWidth', 2);
+    end
+    quiver(agent_coordinates(:,1), agent_coordinates(:,2), ...
+        forces(:,1), forces(:,2), scl);
+    grid on;
+    xlim([0, box_length]);
+    ylim([0, box_length])
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+
+
+
+% -------------------------------------------------------------------------
+% --------------------Plot Virtual Trajectory -----------------------------
+% -------------------------------------------------------------------------
+function plot_trajectory(traj_coord, box_length, rand_color)
+    counter = 1;
+    curve = animatedline('linewidth',1, 'color', rand_color);
+    for i=1:(length(traj_coord)-1)
+        dif = norm(traj_coord(i+1,:)-traj_coord(i,:));
+        if dif > box_length * 0.5
+            addpoints(curve, traj_coord(counter:i,1), traj_coord(counter:i,2));
+            drawnow
+            curve = animatedline('linewidth',1, 'color', rand_color);
+            counter = i+1;
+        end
+    end
+    addpoints(curve, traj_coord(counter:end,1), traj_coord(counter:end,2));
+    drawnow   
+end
