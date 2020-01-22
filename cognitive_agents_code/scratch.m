@@ -1,36 +1,84 @@
 % parameters, number of agents, trajectories, etc.
-n_agent = 20;       %number of agents
-n_vsteps = 200;      %number of virtual steps
-n_steps = 20;       %number of real steps
+n_agent = 200;       %number of agents
+n_vsteps = 20;      %number of virtual steps
+n_steps = 1000;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 5;          %diameter
-box_length = 80;    %area explored
+box_length = 80*sigma;    %area explored
 timestep = 0.1;     % dt timestep
 friction = 1.0;     %gamma
-temperature = 1.0;  %temperature, to test if ss achieved
+temperature = 20.0;  %temperature, to test if ss achieved
 noise = sqrt(2.0*friction*temperature/timestep);
 repul_strength = 20.0;
 repul_exp = 60.0;
+
+
 
 % ------------- Initialization-- ------------------------------------------
 agent_velo = zeros(n_agent,2);
 agent_coor = initialize_agents(n_agent, sigma, box_length);
 force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
-plot_agents(agent_coor, sigma, box_length, force_init, 1)
+%plot_agents(agent_coor, sigma, box_length, force_init, 1)
+
 % -------------------------------------------------------------------------
 
-for tr=1:10
-    
-    [hail, mary] = virtual_traj(agent_coor, agent_velo, 1, n_vsteps, ...
-    sigma, box_length, repul_strength, friction, noise, timestep)
+% Initialize coordinates
+everything_coor_x = zeros(n_agent, n_steps);
+everything_coor_y = zeros(n_agent, n_steps);
+everything_coor_x(:,1) = agent_coor(:,1);
+everything_coor_y(:,1) = agent_coor(:,2);
 
+% first timestep
+all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
+    agent_velo, sigma, box_length, repul_strength, friction, noise,...
+    timestep, n_vsteps);
 
+[new_coor, new_velo] = next_timestep( agent_coor, ...
+    agent_coor, agent_velo, timestep, ...
+    n_agent, all_gyrations, n_traj, sigma, box_length, repul_strength, ...
+    friction, noise);
+everything_coor_x(:,2) = mod(new_coor(:,1),box_length);
+everything_coor_y(:,2) = mod(new_coor(:,2), box_length);
 
-    plot_trajectory(hail,box_length, rand(1,3))
+%next timesteps
+for step=3:n_steps
+    agent_coor = [everything_coor_x(:,step-1) everything_coor_y(:,step-1)];
+    past_agent_coor = [everything_coor_x(:,step-2) everything_coor_y(:,step-2)];
+    all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
+        agent_velo, sigma, box_length, repul_strength, friction, noise,...
+        timestep, n_vsteps);
 
+    [new_coor, new_velo] = next_timestep( agent_coor, ...
+        past_agent_coor, agent_velo, timestep, ...
+        n_agent, all_gyrations, n_traj, sigma, box_length, repul_strength, ...
+        friction, noise);
+    everything_coor_x(:,step) = mod(new_coor(:,1), box_length);
+    everything_coor_y(:,step) = mod(new_coor(:,2), box_length);
+    %plot_agents(agent_coor, sigma, box_length, force_init, 1)
 end
 
+% plot the real trajectories:
+% for agent = 1:n_agent
+%     traj = [everything_coor_x(agent,:); everything_coor_y(agent,:)].';
+%     plot_trajectory(traj, box_length, rand(1,3))
+% end
 
+if true
+    vobj = VideoWriter('simulation.avi', 'MPEG-4');
+    vobj.FrameRate = 10;
+    vobj.open;
+    fig = figure('visible','off');
+    for step = 1:n_steps
+        plot_coor = [everything_coor_x(:,step) everything_coor_y(:,step)];
+        force_repulsive = hard_repulsion(plot_coor, sigma, box_length, ...
+            repul_strength);
+        plot_agents(plot_coor, sigma, box_length, force_repulsive, 1);
+        frame = getframe(fig);
+        writeVideo(vobj,frame);
+    end
+    vobj.close;
+    vobj.delete;
+end
 
 
 % ---------------------- End of main --------------------------------------
@@ -51,8 +99,9 @@ end
 % -------------------------------------------------------------------------
 
 
+
 % -------------------------------------------------------------------------
-% -------------------- Virtual Trajectory ---------------------------------
+% -------------------- Virtual Trajectory Creation ------------------------
 % -------------------------------------------------------------------------
 % i is the agent we are investigating
 
@@ -101,10 +150,27 @@ function [traj_coor, traj_velo] = virtual_traj(agent_coor, agent_velo, i, ...
     end
     
 end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 
 
 
+% -------------------------------------------------------------------------
+% ------------- Find gyration for  trajectory------------------------------
+% -------------------------------------------------------------------------
+function gyration = calc_gyration(trajectory)
+    mean_gyration = mean(trajectory, 1);
+    gyration = zeros(1,2);
+    for i=2:length(trajectory)
+        gyration = gyration + (trajectory(i,:) - mean_gyration).^2 ;
+    end
+    gyration = gyration/(length(trajectory)-1);
+    gyration = sqrt(gyration(1)^2 + gyration(2)^2);
+
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 
 
@@ -218,6 +284,67 @@ end
 % -------------------------------------------------------------------------
                
 
+% -------------------------------------------------------------------------
+% -------------------- Calculate All Gyrations ----------------------------
+% -------------------------------------------------------------------------
+function all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
+    agent_velo, sigma, box_length, repul_strength, friction, noise,...
+    timestep, n_vsteps)
+
+    all_gyrations = zeros(n_agent, n_traj);
+
+    for agent_no = 1:n_agent
+        %disp('Entering agent')
+        for tr=1:n_traj
+
+            [virt_coor, virt_velo] = virtual_traj(agent_coor, agent_velo,...
+                agent_no, n_vsteps, ...
+            sigma, box_length, repul_strength, friction, noise, timestep);
+
+            %plot_trajectory(virt_coor,box_length, rand(1,3))
+            all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
+        end
+    end
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+
+
+% -------------------------------------------------------------------------
+% -------------------- One Timestep calculation ---------------------------
+% -------------------------------------------------------------------------
+function [new_coor, new_velo] = next_timestep( agent_coor, ...
+    past_agent_coor, agent_velo, timestep, ...
+    n_agent, all_gyrations, n_traj, diameter, area, strength, friction, noise)
+    new_coor = zeros(n_agent, 2);
+    new_velo = zeros(n_agent, 2);
+    for agent=1:n_agent
+        % Calculate langevin force based on gyration
+        f_lang_agent = zeros(1,2);
+        agent_mean_gyration = mean(all_gyrations(agent,:));
+        for j=1:n_traj
+            norm_gyr = log(all_gyrations(agent,j)/agent_mean_gyration);
+            f_lang_agent = f_lang_agent + norm_gyr * bivariate_normal(1);
+        end
+        f_lang_agent = f_lang_agent/n_traj;
+        f_lang_agent = -friction * agent_velo(agent,:) + ...
+            noise * f_lang_agent;
+        f_rep = hard_repulsion_agent(agent_coor, agent, diameter, ...
+            area, strength);
+        f_tot = f_lang_agent + f_rep;
+        new_coor(agent, :) = 2 * agent_coor(agent, :) - ...
+            past_agent_coor(agent,:) + f_tot * (timestep^2);
+        new_velo(agent, :) = agent_velo(agent, :) + timestep * f_tot;
+        
+    end
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+
+
+
 
 % -------------------------------------------------------------------------
 % ------------- Function to plot screenshot--------------------------------
@@ -239,6 +366,7 @@ function plot_agents(agent_coordinates, diameter, box_length, forces, scl)
     grid on;
     xlim([0, box_length]);
     ylim([0, box_length])
+    hold off;
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
