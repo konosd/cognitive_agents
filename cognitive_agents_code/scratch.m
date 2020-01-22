@@ -1,91 +1,141 @@
+%%
 % parameters, number of agents, trajectories, etc.
-n_agent = 200;       %number of agents
-n_vsteps = 20;      %number of virtual steps
-n_steps = 1000;       %number of real steps
+n_agent = 50;       %number of agents
+n_vsteps = 200;      %number of virtual steps
+n_steps = 10;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 5;          %diameter
 box_length = 80*sigma;    %area explored
 timestep = 0.1;     % dt timestep
 friction = 1.0;     %gamma
-temperature = 20.0;  %temperature, to test if ss achieved
+temperature = 1.0;  %temperature, to test if ss achieved
 noise = sqrt(2.0*friction*temperature/timestep);
 repul_strength = 20.0;
 repul_exp = 60.0;
 
-
-
-% ------------- Initialization-- ------------------------------------------
-agent_velo = zeros(n_agent,2);
+%% ------------- Initialization--------------------------------------------
 agent_coor = initialize_agents(n_agent, sigma, box_length);
+agent_velo = zeros(n_agent,2);
 force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
-%plot_agents(agent_coor, sigma, box_length, force_init, 1)
-
 % -------------------------------------------------------------------------
 
-% Initialize coordinates
-everything_coor_x = zeros(n_agent, n_steps);
-everything_coor_y = zeros(n_agent, n_steps);
-everything_coor_x(:,1) = agent_coor(:,1);
-everything_coor_y(:,1) = agent_coor(:,2);
+%% ----------- To visualize one virtual trajectory of one agent -----------
 
-% first timestep
-all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
-    agent_velo, sigma, box_length, repul_strength, friction, noise,...
-    timestep, n_vsteps);
+% [my_traj_coor, my_traj_velo] = virtual_traj(agent_coor, agent_velo, 1, ...
+%     n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep);
+% 
+% fig = figure(1);
+% plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% plot_trajectory(my_traj_coor, box_length, rand(1,3))
 
-[new_coor, new_velo] = next_timestep( agent_coor, ...
-    agent_coor, agent_velo, timestep, ...
-    n_agent, all_gyrations, n_traj, sigma, box_length, repul_strength, ...
-    friction, noise);
-everything_coor_x(:,2) = mod(new_coor(:,1),box_length);
-everything_coor_y(:,2) = mod(new_coor(:,2), box_length);
+%% ----------- To visualize all virtual trajectories of one agent ---------
+% fig = figure(1);
+% plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% for tr = 1:n_traj
+%    [my_virt_traj, my_virt_velo] =  virtual_traj(agent_coor, agent_velo, 1, ...
+%      n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep);
+%     plot_trajectory(my_virt_traj, box_length, rand(1,3))
+% end
 
-%next timesteps
-for step=3:n_steps
-    agent_coor = [everything_coor_x(:,step-1) everything_coor_y(:,step-1)];
-    past_agent_coor = [everything_coor_x(:,step-2) everything_coor_y(:,step-2)];
+%% ---------- To visualize all virtual trajectories of all agents ---------
+fig = figure(1);
+plot_agents(agent_coor, sigma, box_length, force_init, 1)
+for agent = 1:n_agent
+    for tr = 1:n_traj
+       [my_virt_traj, my_virt_velo] =  virtual_traj(agent_coor, agent_velo, agent, ...
+         n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep);
+        plot_trajectory(my_virt_traj, box_length, rand(1,3))
+    end
+end
+%% To visualize everything, solve the full problem, chunk below -----------
+
+% [all_x, all_y] = cef_solver( agent_coor,...
+%     n_agent, n_traj, sigma, ...
+%     box_length, repul_strength, friction, noise, timestep, n_vsteps, ...
+%     n_steps, true);
+
+
+%% ---------------------- End of main --------------------------------------
+
+% -------------------------------------------------------------------------
+%% --------------------- Helper Functions ---------------------------------
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% --------------------------- All timesteps -------------------------------
+% -------------------------------------------------------------------------
+function [everything_coor_x, everything_coor_y] = cef_solver( agent_coor,...
+    n_agent, n_traj, sigma, ...
+    box_length, repul_strength, friction, noise, timestep, n_vsteps, ...
+    n_steps, record)
+    % ------------- Initialization-- ------------------------------------------
+    agent_velo = zeros(n_agent,2);
+    force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
+    %plot_agents(agent_coor, sigma, box_length, force_init, 1)
+
+    % -------------------------------------------------------------------------
+
+    % Initialize coordinates
+    everything_coor_x = zeros(n_agent, n_steps);
+    everything_coor_y = zeros(n_agent, n_steps);
+    everything_coor_x(:,1) = agent_coor(:,1);
+    everything_coor_y(:,1) = agent_coor(:,2);
+
+    % first timestep
     all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
         agent_velo, sigma, box_length, repul_strength, friction, noise,...
         timestep, n_vsteps);
 
     [new_coor, new_velo] = next_timestep( agent_coor, ...
-        past_agent_coor, agent_velo, timestep, ...
+        agent_coor, agent_velo, timestep, ...
         n_agent, all_gyrations, n_traj, sigma, box_length, repul_strength, ...
         friction, noise);
-    everything_coor_x(:,step) = mod(new_coor(:,1), box_length);
-    everything_coor_y(:,step) = mod(new_coor(:,2), box_length);
-    %plot_agents(agent_coor, sigma, box_length, force_init, 1)
-end
+    everything_coor_x(:,2) = mod(new_coor(:,1),box_length);
+    everything_coor_y(:,2) = mod(new_coor(:,2), box_length);
 
-% plot the real trajectories:
-% for agent = 1:n_agent
-%     traj = [everything_coor_x(agent,:); everything_coor_y(agent,:)].';
-%     plot_trajectory(traj, box_length, rand(1,3))
-% end
+    %next timesteps
+    for step=3:n_steps
+        agent_coor = [everything_coor_x(:,step-1) everything_coor_y(:,step-1)];
+        past_agent_coor = [everything_coor_x(:,step-2) everything_coor_y(:,step-2)];
+        all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
+            agent_velo, sigma, box_length, repul_strength, friction, noise,...
+            timestep, n_vsteps);
 
-if true
-    vobj = VideoWriter('simulation.avi', 'MPEG-4');
-    vobj.FrameRate = 10;
-    vobj.open;
-    fig = figure('visible','off');
-    for step = 1:n_steps
-        plot_coor = [everything_coor_x(:,step) everything_coor_y(:,step)];
-        force_repulsive = hard_repulsion(plot_coor, sigma, box_length, ...
-            repul_strength);
-        plot_agents(plot_coor, sigma, box_length, force_repulsive, 1);
-        frame = getframe(fig);
-        writeVideo(vobj,frame);
+        [new_coor, new_velo] = next_timestep( agent_coor, ...
+            past_agent_coor, agent_velo, timestep, ...
+            n_agent, all_gyrations, n_traj, sigma, box_length, repul_strength, ...
+            friction, noise);
+        everything_coor_x(:,step) = mod(new_coor(:,1), box_length);
+        everything_coor_y(:,step) = mod(new_coor(:,2), box_length);
+        %plot_agents(agent_coor, sigma, box_length, force_init, 1)
+        prm = "Step " + step + " complete.";
+        disp(prm)
     end
-    vobj.close;
-    vobj.delete;
+    
+    if record
+        vobj = VideoWriter('simulation.avi');
+        vobj.FrameRate = 10;
+        vobj.open;
+        fig = figure('visible','off');
+        for step = 1:n_steps
+            plot_coor = [everything_coor_x(:,step) everything_coor_y(:,step)];
+            force_repulsive = hard_repulsion(plot_coor, sigma, box_length, ...
+                repul_strength);
+            plot_agents(plot_coor, sigma, box_length, force_repulsive, 1);
+            frame = getframe(fig);
+            writeVideo(vobj,frame);
+            prm = "Step " + step + " recorded.";
+            disp(prm)
+        end
+        vobj.close;
+        vobj.delete;
+    end    
+    
+   
 end
-
-
-% ---------------------- End of main --------------------------------------
 % -------------------------------------------------------------------------
-% --------------------- Helper Functions ----------------------------------
 % -------------------------------------------------------------------------
-
 
 
 % -------------------------------------------------------------------------
@@ -292,7 +342,7 @@ function all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
     timestep, n_vsteps)
 
     all_gyrations = zeros(n_agent, n_traj);
-
+    %lambdas = zeros(1, n_agent);
     for agent_no = 1:n_agent
         %disp('Entering agent')
         for tr=1:n_traj
@@ -300,11 +350,15 @@ function all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
             [virt_coor, virt_velo] = virtual_traj(agent_coor, agent_velo,...
                 agent_no, n_vsteps, ...
             sigma, box_length, repul_strength, friction, noise, timestep);
-
+            %lambdas(agent_no) = lambdas(agent_no)+...
+                sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
+                (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
             %plot_trajectory(virt_coor,box_length, rand(1,3))
             all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
         end
+        %lambdas(agent_no) = lambdas(agent_no)/n_traj;
     end
+    %mean(lambdas)
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
