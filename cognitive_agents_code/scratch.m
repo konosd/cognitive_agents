@@ -1,17 +1,18 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = 80;       %number of agents
+n_agent = 100;       %number of agents
 n_vsteps = 60;      %number of virtual steps
-n_steps = 2000;       %number of real steps
-n_traj = 360;        %number of trajectories
-sigma = 5;          %diameter
-box_length = 50*sigma;    %area explored
+n_steps = 1000;       %number of real steps
+n_traj = 20;        %number of trajectories
+sigma = 1;          %diameter
+box_length = 80*sigma;    %area explored
 timestep = 0.1;     % dt timestep
 friction = 1.0;     %gamma
-temperature = 10.0;  %temperature, to test if ss achieved
+temperature = 1.0;  %temperature, to test if ss achieved
 noise = sqrt(2.0*friction*temperature/timestep);
 repul_strength = 20.0;
 repul_exp = 60.0;
+
 
 %% ------------- Initialization--------------------------------------------
 agent_coor = initialize_agents(n_agent, sigma, box_length);
@@ -21,20 +22,20 @@ force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
 
 %% ----------- To visualize one virtual trajectory of one agent -----------
 
-% [my_traj_coor, my_traj_velo] = virtual_traj(agent_coor, agent_velo, 1, ...
+% [my_traj_coor, my_traj_velo, bound] = virtual_traj(agent_coor, agent_velo, 1, ...
 %     n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep);
 % 
 % fig = figure(1);
 % plot_agents(agent_coor, sigma, box_length, force_init, 1)
-% plot_trajectory(my_traj_coor, box_length, rand(1,3))
+% plot_trajectory(bound, box_length, rand(1,3))
 
-%% ----------- To visualize all virtual trajectories of one agent ---------
+% %% ----------- To visualize all virtual trajectories of one agent ---------
 % fig = figure(1);
 % plot_agents(agent_coor, sigma, box_length, force_init, 1)
 % for tr = 1:n_traj
-%    [my_virt_traj, my_virt_velo] =  virtual_traj(agent_coor, agent_velo, 1, ...
+%    [my_virt_traj, my_virt_velo, bound] =  virtual_traj(agent_coor, agent_velo, 1, ...
 %      n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep);
-%     plot_trajectory(my_virt_traj, box_length, rand(1,3))
+%     plot_trajectory(bound, box_length, rand(1,3))
 % end
 
 %% ---------- To visualize all virtual trajectories of all agents ---------
@@ -42,12 +43,13 @@ force_init = hard_repulsion(agent_coor, sigma, box_length, repul_strength);
 % plot_agents(agent_coor, sigma, box_length, force_init, 1)
 % for agent = 1:n_agent
 %     for tr = 1:n_traj
-%        [my_virt_traj, my_virt_velo] =  virtual_traj(agent_coor, ...
+%        [my_virt_traj, my_virt_velo, bound] =  virtual_traj(agent_coor, ...
 %             agent_velo, agent, ...
 %          n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep);
-%         plot_trajectory(my_virt_traj, box_length, rand(1,3))
+%         plot_trajectory(bound, box_length, rand(1,3))
 %     end
 % end
+
 %% ---- To visualize everything, solve the full problem, chunk below ------
 % 
 [all_x, all_y, vel_x, vel_y] = cef_solver( agent_coor,...
@@ -69,6 +71,13 @@ save coor.dat coordat -ascii
 % -------------------------------------------------------------------------
 %% --------------------- Helper Functions ---------------------------------
 % -------------------------------------------------------------------------
+
+
+%% ------------------------------------------------------------------------
+% --------------- All timesteps but with synthetic agents -----------------
+% -------------------------------------------------------------------------
+
+
 
 
 %% ------------------------------------------------------------------------
@@ -139,23 +148,23 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y] =...
     end
     
     if record
-        vobj = VideoWriter('simulation.avi');
-        vobj.FrameRate = 10;
-        vobj.open;
-        fig = figure('visible','off');
+%         vobj = VideoWriter('simulation.avi');
+%         vobj.FrameRate = 10;
+%         vobj.open;
+        fig = figure('visible','on');
         for step = 1:n_steps
             plot_coor = [everything_coor_x(:,step) everything_coor_y(:,step)];
             plot_velo = [all_velo_x(:,step) all_velo_y(:,step)];
             force_repulsive = hard_repulsion(plot_coor, sigma, box_length, ...
                 repul_strength);
             plot_agents(plot_coor, sigma, box_length, force_repulsive, 1);
-            frame = getframe(fig);
-            writeVideo(vobj,frame);
+%             frame = getframe(fig);
+%             writeVideo(vobj,frame);
             prm = "Step " + step + " recorded.";
-            disp(prm)
+%             disp(prm)
         end
-        vobj.close;
-        vobj.delete;
+%         vobj.close;
+%         vobj.delete;
     end    
     
     if false
@@ -189,7 +198,7 @@ end
 % -------------------------------------------------------------------------
 % i is the agent we are investigating
 
-function [traj_coor, traj_velo] = virtual_traj(agent_coor, agent_velo, i, ...
+function [traj_coor, traj_velo, bound_coor] = virtual_traj(agent_coor, agent_velo, i, ...
     n_virt_steps, diameter, area, strength, friction, noise, dt)
     
     % First element is the real one, so updating number of virtual time
@@ -198,6 +207,7 @@ function [traj_coor, traj_velo] = virtual_traj(agent_coor, agent_velo, i, ...
     
     % Initialize vectors of path and velocities
     traj_coor = zeros(n_virt_steps,2);
+    bound_coor = zeros(n_virt_steps,2);
     traj_velo = zeros(n_virt_steps,2);
     grid_coor = agent_coor;
     
@@ -208,16 +218,18 @@ function [traj_coor, traj_velo] = virtual_traj(agent_coor, agent_velo, i, ...
     % starting the iteration for the first virtual timestep
     traj_coor(1,:) = agent_coor(i,:);
     traj_velo(1,:) = agent_velo(i,:);
+    bound_coor(1,:) = agent_coor(i,:);
     
     f_rep = hard_repulsion_agent(agent_coor, i, diameter, area, strength);
     f_langevin = -friction * traj_velo(1,:) + virt_steps_noise(1,:);
     f_tot = f_langevin + f_rep;
     traj_coor(2,:) = traj_coor(1,:) + traj_velo(1,:)* dt + ...
         0.5 * f_tot * (dt^2) ;
+    bound_coor(2,:) = mod(traj_coor(2,:), area);
     traj_velo(2,:) = traj_velo(1,:) + f_tot* dt ;
     
     % Update the grid;
-    grid_coor(i,:) = traj_coor(2,:);
+    grid_coor(i,:) = mod(traj_coor(2,:), area);
     
     for j=3:n_virt_steps
         % find repulsion force for step
@@ -225,39 +237,13 @@ function [traj_coor, traj_velo] = virtual_traj(agent_coor, agent_velo, i, ...
         f_langevin = -friction * traj_velo(j-1,:) + virt_steps_noise(j,:);
         f_tot = f_rep + f_langevin;
         % update velocity and position of virtual timestep
-        %traj_velo(j,:) = traj_velo(j-1,:) + f_tot * dt;
-        % Check the boundaries for position
-        past = traj_coor(j-2,:);
-        if (traj_coor(j-1,1)-past(1)) > (0.5 * area)
-            past = [(past(1) + area) past(2)];
-        elseif (traj_coor(j-1,1)-past(1)) < -(0.5 * area)
-            past = [(past(1) - area) past(2)];
-        end
-        if (traj_coor(j-1,2)-past(2)) > (0.5 * area)
-            past = [past(1) (past(2) + area)];
-        elseif (traj_coor(j-1,2)-past(2)) < -(0.5 * area)
-            past = [past(1) (past(2) - area)];
-        end   
-        
-        traj_coor(j,:) = 2 * traj_coor(j-1,:) - past + ...
+        traj_coor(j,:) = 2 * traj_coor(j-1,:) - traj_coor(j-2,:) + ...
             f_tot * (dt^2);
         
-        % Check the boundaries for velocity
-        current = traj_coor(j-1,:);
-        if (traj_coor(j,1) - current(1)) > (0.5 * area)
-            current = [(current(1) + area) current(2)];
-        elseif (traj_coor(j,1) - current(1)) < - (0.5 * area)
-            current = [(current(1) - area) current(2)];
-        end
-        if (traj_coor(j,2) - current(2)) > (0.5 * area)
-            current = [current(1) (current(2) + area)];
-        elseif (traj_coor(j,2) - current(2)) < - (0.5 * area)
-            current = [current(1) (current(2) - area) ];
-        end
-        traj_velo(j,:) = (traj_coor(j,:) - current)/dt;
+        traj_velo(j,:) = (traj_coor(j,:) - traj_coor(j-1,:))/dt;
         % update the grid:
-        traj_coor(j,:) = mod(traj_coor(j,:),area);
-        grid_coor(i,:) = traj_coor(j,:);
+        bound_coor(j,:) = mod(traj_coor(j,:), area);
+        grid_coor(i,:) = mod(traj_coor(j,:), area);
     end
     
 end
@@ -332,7 +318,7 @@ end
 
 
 %% ------------------------------------------------------------------------
-% ------------- Hardcore Repulsion ----------------------------------------
+% ------------- Softcore Repulsion ----------------------------------------
 % -------------------------------------------------------------------------
 function force_rep = hard_repulsion(agent_coordinates, diameter, area, strength)
     force_rep = zeros(length(agent_coordinates), 2);
@@ -365,7 +351,7 @@ end
 
 
 %% ------------------------------------------------------------------------
-% ------------- Hardcore Repulsion for One Agent---------------------------
+% ------------- SOftcore Repulsion for One Agent---------------------------
 % -------------------------------------------------------------------------
 function force_rep = hard_repulsion_agent(agent_coordinates, i, ...
         diameter, area, strength)
@@ -408,7 +394,7 @@ function all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
         %disp('Entering agent')
         for tr=1:n_traj
 
-            [virt_coor, virt_velo] = virtual_traj(agent_coor, agent_velo,...
+            [virt_coor, virt_velo, bound] = virtual_traj(agent_coor, agent_velo,...
                 agent_no, n_vsteps, ...
             sigma, box_length, repul_strength, friction, noise, timestep);
             %lambdas(agent_no) = lambdas(agent_no)+...
@@ -451,7 +437,9 @@ function [new_coor, new_velo] = next_timestep( agent_coor, ...
         end
         f_rep = hard_repulsion_agent(agent_coor, agent, diameter, ...
             area, strength);
+%         disp("Agent " + agent + ": Langevin is " + f_lang_agent)
         f_tot = f_lang_agent + f_rep;
+        
         % Check the boundaries for position
         past = past_agent_coor(agent,:);
         if (agent_coor(agent, 1)-past_agent_coor(agent,1)) > (0.5 * area)
