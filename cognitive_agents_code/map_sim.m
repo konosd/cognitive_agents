@@ -1,7 +1,7 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = 100;       %number of agents
-n_vsteps = 60;      %number of virtual steps
+n_agent = 600;       %number of agents
+n_vsteps = 100;      %number of virtual steps
 n_steps = 1000;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
@@ -13,7 +13,11 @@ noise = sqrt(2.0*friction*temperature/timestep);
 repul_strength = 20.0;
 repul_exp = 60.0;
 repul_type = "hard";
+pi = 4 * atan(1);
 
+% Filling fraction:
+phi = n_agent * pi * sigma^2 / (4* box_length^2);
+disp("Filling fraction is " + phi)
 
 %% ------------- Initialization--------------------------------------------
 agent_coor = initialize_agents(n_agent, sigma, box_length);
@@ -442,7 +446,7 @@ function all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
     timestep, n_vsteps, repul_type)
 
     all_gyrations = zeros(n_agent, n_traj);
-    %lambdas = zeros(1, n_agent);
+    lambdas = zeros(1, n_agent);
     for agent_no = 1:n_agent
         %disp('Entering agent')
         for tr=1:n_traj
@@ -450,15 +454,15 @@ function all_gyrations = calc_all_gyrations(n_agent, n_traj, agent_coor,...
             [virt_coor, virt_velo, bound] = virtual_traj(agent_coor, agent_velo,...
                 agent_no, n_vsteps, ...
             sigma, box_length, repul_strength, friction, noise, timestep, repul_type);
-            %lambdas(agent_no) = lambdas(agent_no)+...
-                %sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
-                %(virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
+            lambdas(agent_no) = lambdas(agent_no)+...
+                sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
+                (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
             %plot_trajectory(virt_coor,box_length, rand(1,3))
             all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
         end
-        %lambdas(agent_no) = lambdas(agent_no)/n_traj;
+        lambdas(agent_no) = lambdas(agent_no)/n_traj;
     end
-    %mean(lambdas)
+    disp("Lambda is " + mean(lambdas))
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
@@ -576,3 +580,5 @@ function plot_trajectory(traj_coord, box_length, rand_color)
     addpoints(curve, traj_coord(counter:end,1), traj_coord(counter:end,2));
     drawnow   
 end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
