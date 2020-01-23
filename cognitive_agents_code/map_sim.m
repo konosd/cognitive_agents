@@ -1,9 +1,9 @@
 %%
 % parameters, number of agents, trajectories, etc.
 n_agent = 600;       %number of agents
-n_vsteps = 100;      %number of virtual steps
+n_vsteps = 120;      %number of virtual steps
 n_steps = 1000;       %number of real steps
-n_traj = 20;        %number of trajectories
+n_traj = 36;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 timestep = 0.1;     % dt timestep
@@ -151,6 +151,9 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y] =...
         % -----------------------------------
         prm = "Step " + step + " complete.";
         disp(prm)
+        % Find total kinetic energy:
+        kinetic_energy = sum( 0.5 * (all_velo_x(:,step).^2 + all_velo_y(:,step).^2));
+        disp("Total kinetic energy of step " + step + " is "+ kinetic_energy)
     end
     
     if record
