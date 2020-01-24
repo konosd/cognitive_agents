@@ -21,9 +21,16 @@ phi = n_agent * pi * sigma^2 / (4* box_length^2);
 disp("Filling fraction is " + phi)
 
 %% ------------- Initialization--------------------------------------------
-agent_coor = initialize_agents(n_agent, sigma, box_length);
-agent_velo = zeros(n_agent,2);
+% agent_coor = initialize_agents(n_agent, sigma, box_length);
+% agent_velo = zeros(n_agent,2);
+
+% To start from a previous step
+agent_coor = [all_x(:,1000) all_y(: , 1000)];
+agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
+
 force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
+
+
 % -------------------------------------------------------------------------
 
 %% ----------- To visualize one virtual trajectory of one agent -----------
@@ -45,17 +52,17 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 % end
 
 %% ---------- To visualize all virtual trajectories of all agents ---------
-% fig = figure(1);
-% plot_agents(agent_coor, sigma, box_length, force_init, 1)
-% for agent = 1:n_agent
-%     for tr = 1:n_traj
-%        [my_virt_traj, my_virt_velo, bound, traj_init] =  virtual_traj(agent_coor, ...
-%             agent_velo, agent, ...
-%          n_vsteps, sigma, box_length, repul_strength, friction, noise,...
-%               timestep, v_repul_type);
-%         plot_trajectory(bound, box_length, rand(1,3))
-%     end
-% end
+fig = figure(1);
+plot_agents(agent_coor, sigma, box_length, force_init, 1)
+for agent = 1:n_agent
+    for tr = 1:n_traj
+       [my_virt_traj, my_virt_velo, bound, traj_init] =  virtual_traj(agent_coor, ...
+            agent_velo, agent, ...
+         n_vsteps, sigma, box_length, repul_strength, friction, noise,...
+              timestep, v_repul_type);
+        plot_trajectory(bound, box_length, rand(1,3))
+    end
+end
 
 %% ---- To visualize everything, solve the full problem, chunk below ------
 % 
