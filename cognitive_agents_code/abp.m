@@ -1,16 +1,16 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = 2;       %number of agents
-n_vsteps = 20000;      %number of virtual steps
-n_steps = 1;       %number of real steps
+n_agent = 300;       %number of agents
+n_vsteps = 20;      %number of virtual steps
+n_steps = 1000;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 timestep = 0.1;     % dt timestep
-friction = 0.2;     %gamma
+friction = 1.0;     %gamma
 temperature = 1.0;  %temperature
 noise = sqrt(2.0*friction*temperature/timestep);
-repul_strength = 20.0;
+repul_strength = 10.0;
 repul_exp = 60.0;
 repul_type = "soft";
 v_repul_type = "hard";
@@ -25,18 +25,19 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = 1.0;    % energy intake from the environment
-food_radius = 10;
-food_center = [80*sigma*0.5 80*sigma*0.5];
+q0 =1.0;    % energy intake from the environment
+food_radius = 1e4;
+food_center = [0.7 0.7];%[80*sigma*0.5 80*sigma*0.5];
 q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
 d2 = 1.0;   % conversion rate of internal-to-kinetic energy
-c = 0.1;    % dissipation of internal energy
-abp_steps = 60000;
+c = 0.01;    % dissipation of internal energy
+%abp_steps = 60000; this is not used anymore. Virtual steps instead
 h = 0.1;
-D = 0.001;
+D = 0.01;
 
 % Potential field
 a = 0;
+
 U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
@@ -48,7 +49,7 @@ disp("Filling fraction is " + phi)
 agent_coor = initialize_agents(n_agent, sigma, box_length);
 agent_velo = zeros(n_agent,2);
 % For the active particles, add energy depot
-agent_energies = zeros(n_agent,1);
+agent_energy = zeros(n_agent,1);
 
 % % To start from a previous step
 % agent_coor = [all_x(:,1000) all_y(: , 1000)];
@@ -62,18 +63,18 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 
 
 %% ---------------- Recreating model ABP  paper----------------------------
-
-% % Initial positions
-% e0 = 0;
-% r0 = [1 0];
-% v0 = [1 0.5];
 % 
-% % Define deterministic ODEs of motion of an active brownian agent
-% f = {@(v, e) v;
-%     @(v, e) (d2 * e *v - friction * v);
-%     @(v, e) q - c * e - d2 * (v(1)^2 + v(2)^2) * e};
-% 
-% [r,v,e] = rk4(f, r0, v0, e0, d2, friction, q, c, h, abp_steps);
+% % % Initial positions
+% % e0 = 0;
+% % r0 = [1 0];
+% % v0 = [1 0.5];
+% % 
+% % % Define deterministic ODEs of motion of an active brownian agent
+% % f = {@(v, e) v;
+% %     @(v, e) (d2 * e *v - friction * v);
+% %     @(v, e) q - c * e - d2 * (v(1)^2 + v(2)^2) * e};
+% % 
+% % [r,v,e] = rk4(f, r0, v0, e0, d2, friction, q, c, h, abp_steps);
 % 
 % t = [0:h:abp_steps*h];
 % 
@@ -128,6 +129,7 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 %     
 % end
 % 
+% circle(food_center, food_radius)
 % plot(x1, x2)
 
 
@@ -135,17 +137,58 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 % what happens if i try to solve the problem with the same cognitive force,
 % etc., but updated motions.
 
-[my_traj_coor, my_traj_velo, bound, traj_init] = virtual_traj_abp(agent_coor, agent_velo, 1, ...
-    n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, 0, d2, a, c, q);
+%------------ One agent One trajectory ------------------------------------
+
+% [my_traj_coor, my_traj_velo, bound, traj_init] = virtual_traj_abp(agent_coor, agent_velo, 1, ...
+%     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, 0, d2, a, c, q);
+% 
+% fig = figure(1);
+% plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% circle(food_center, food_radius)
+% plot_trajectory(bound, box_length, rand(1,3))
+
+%------------- One agent All trajectories ---------------------------------
+% fig = figure(1);
+% plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% circle(food_center, food_radius)
+% for t = 1:n_traj
+%     [my_traj_coor, my_traj_velo, bound, traj_init] = ...
+%           virtual_traj_abp(agent_coor, agent_velo, agent_energy, 1, ...
+%     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, 0, d2, a, c, q);
+%     plot_trajectory(bound, box_length, rand(1,3))
+% end
+
+%--------------------- All agents All trajectories ------------------------
+% fig = figure(1);
+% plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% circle(food_center, food_radius)
+% for i = 1:n_agent
+%     for t = 1:n_traj
+%         [my_traj_coor, my_traj_velo, bound, traj_init] = ...
+%             virtual_traj_abp(agent_coor, agent_velo, agent_energy, i, ...
+%         n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q)
+%         plot_trajectory(bound, box_length, rand(1,3))
+%         my_traj_coor;
+%     end    
+% end
 
 
+%-------------------------- Master Solver ABP -----------------------------
+
+[all_x, all_y, vel_x, vel_y] = cef_solver_abp( agent_coor,...
+    n_agent, n_traj, sigma, ...
+    box_length, repul_strength, friction, D, h, n_vsteps, ...
+    n_steps, repul_type, v_repul_type, false, synthetic, d2, a, c, q);
 
 
-fig = figure(1);
-plot_agents(agent_coor, sigma, box_length, force_init, 1)
-plot_trajectory(bound, box_length, rand(1,3))
+incr = 4;
+coordat = zeros(n_agent * n_steps / incr, 4);
+for i=1:n_steps/4
+    coordat(((i-1)*n_agent+1):(i*n_agent) , :) = [all_x(:,i) all_y(:,i) ...
+        vel_x(:,i) vel_y(:,i)];
+end
 
-
+save coor.dat coordat -ascii
 
 %% ----------- Pipeline for passive BP, from old code  --------------------
 
@@ -207,18 +250,17 @@ plot_trajectory(bound, box_length, rand(1,3))
 % --------------- Virtual traj for ABP   ----------------------------------
 % -------------------------------------------------------------------------
 function [traj_coor, traj_velo, ...
-    bound_coor, traj_init_force] = virtual_traj_abp(agent_coor, agent_velo, i, ...
-    n_virt_steps, diameter, area, strength, friction, D ,h, repul_type, e_init, d2, a, c, q)
+    bound_coor, traj_init_force] = virtual_traj_abp(agent_coor, agent_velo, agent_energy, i, ...
+    n_virt_steps, diameter, area, strength, friction, D ,h, repul_type, d2, a, c, q)
     
     % First element is the real one, so updating number of virtual time
     % steps
-    n_virt_steps = n_virt_steps;
     
     % Initialize vectors of path and velocities
-    traj_coor = zeros(n_virt_steps+1,2);
-    bound_coor = zeros(n_virt_steps+1,2);
-    traj_velo = zeros(n_virt_steps+1,2);
-    traj_energy = zeros(n_virt_steps+1,1);
+    traj_coor = zeros(n_virt_steps,2);
+    bound_coor = zeros(n_virt_steps,2);
+    traj_velo = zeros(n_virt_steps,2);
+    traj_energy = zeros(n_virt_steps,1);
     grid_coor = agent_coor;
     
     % Generate random numbers for noise for every step
@@ -239,15 +281,16 @@ function [traj_coor, traj_velo, ...
     traj_coor(1,:) = agent_coor(i,:);
     traj_velo(1,:) = agent_velo(i,:);
     bound_coor(1,:) = agent_coor(i,:);
-    traj_energy(1) = 0;
+    traj_energy(1) = agent_energy(i);
     
     
     for j=2:n_virt_steps
+        f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
         [traj_coor(j,1), traj_coor(j,2), traj_velo(j,1),...
             traj_velo(j,2), traj_energy(j) ]= rk4_step(f, ...
             traj_coor(j-1,1), traj_coor(j-1,2), traj_velo(j-1,1),...
-            traj_velo(j-1,2), traj_energy(j-1), h, diameter, ...
-    area, strength, repul_type, virt_steps_noise(j,:), i, grid_coor);
+            traj_velo(j-1,2), traj_energy(j-1), h, ...
+            virt_steps_noise(j-1,:), f_rep);
 
         bound_coor(j,:) = mod(traj_coor(j,:), area);
         grid_coor(i,:) = mod(traj_coor(j,:), area);
@@ -263,13 +306,16 @@ end
 %% ------------------------------------------------------------------------
 % --------------------------- All timesteps -------------------------------
 % -------------------------------------------------------------------------
-function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y] =...
-    cef_solver( agent_coor,...
+function [everything_coor_x, everything_coor_y,...
+    all_velo_x, all_velo_y, all_energy] =...
+    cef_solver_abp( agent_coor,...
     n_agent, n_traj, sigma, ...
-    box_length, repul_strength, friction, noise, timestep, n_vsteps, ...
-    n_steps, repul_type, v_repul_type, record, synthetic)
+    box_length, repul_strength, friction, noise, h, n_vsteps, ...
+    n_steps, repul_type, v_repul_type, record, synthetic, d2, a, c, q)
     % ------------- Initialization-- ------------------------------------------
     agent_velo = zeros(n_agent,2);
+    agent_energy = zeros(n_agent,1);
+    
     force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
     %plot_agents(agent_coor, sigma, box_length, force_init, 1)
 
@@ -285,38 +331,30 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y] =...
     all_velo_y = zeros(n_agent, n_steps);
     all_velo_x(:,1) = agent_velo(:,1);
     all_velo_y(:,1) = agent_velo(:,2);
+    
+    all_energy = zeros(n_agent,n_steps);
 
-    % first timestep
-    [all_gyrations, traj_init] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
-        agent_velo, sigma, box_length, repul_strength, friction, noise,...
-        timestep, n_vsteps, v_repul_type);
-
-    [new_coor, new_velo] = next_timestep( agent_coor, ...
-        agent_coor, agent_velo, timestep, ...
-        n_agent, all_gyrations, traj_init, n_traj, sigma, box_length, repul_strength, ...
-        friction, noise, repul_type, synthetic);
-    everything_coor_x(:,2) = mod(new_coor(:,1),box_length);
-    everything_coor_y(:,2) = mod(new_coor(:,2), box_length);
-    all_velo_x(:,2) = new_velo(:,1);
-    all_velo_y(:,2) = new_velo(:,2);
-
-    %next timesteps
-    for step=3:n_steps
+    % loop timesteps
+    for step=2:n_steps
         agent_coor = [everything_coor_x(:,step-1) everything_coor_y(:,step-1)];
-        past_agent_coor = [everything_coor_x(:,step-2) everything_coor_y(:,step-2)];
         agent_velo = [all_velo_x(:,step-1) all_velo_y(:,step-1)];
+        agent_energy = all_energy(:,step-1);
+        
         [all_gyrations, traj_init] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
-            agent_velo, sigma, box_length, repul_strength, friction, noise,...
-            timestep, n_vsteps, v_repul_type);
+            agent_velo, agent_energy, sigma, box_length, repul_strength, friction, noise,...
+            h, n_vsteps, v_repul_type, d2, a, c, q);
 
-        [new_coor, new_velo] = next_timestep( agent_coor, ...
-            past_agent_coor, agent_velo, timestep, ...
+     
+        [new_coor, new_velo, new_energy] = next_timestep_abp( agent_coor, ...
+            agent_velo, agent_energy, h, ...
             n_agent, all_gyrations, traj_init, n_traj, sigma, box_length, repul_strength, ...
-            friction, noise, repul_type, synthetic);
+            friction, noise, repul_type, synthetic, d2, a, c, q);
+    
         everything_coor_x(:,step) = mod(new_coor(:,1), box_length);
         everything_coor_y(:,step) = mod(new_coor(:,2), box_length);
         all_velo_x(:,step) = new_velo(:,1);
         all_velo_y(:,step) = new_velo(:,2);
+        all_energy(:,step) = new_energy;
         %plot_agents(agent_coor, sigma, box_length, force_init, 1)
         % Plot things -----------------------
 %         plot_coor = [everything_coor_x(:,step) everything_coor_y(:,step)];
@@ -371,70 +409,6 @@ end
 function bivar_random = bivariate_normal( samples )
     bivar_random = repmat( [0 0], samples, 1) + ...
         randn(samples, 2) * [1 0; 0 1];
-end
-% -------------------------------------------------------------------------
-% -------------------------------------------------------------------------
-
-
-
-%% ------------------------------------------------------------------------
-% -------------------- Virtual Trajectory Creation ------------------------
-% -------------------------------------------------------------------------
-% i is the agent we are investigating
-
-function [traj_coor, traj_velo, ...
-    bound_coor, traj_init_force] = virtual_traj(agent_coor, agent_velo, i, ...
-    n_virt_steps, diameter, area, strength, friction, noise, dt, repul_type)
-    
-    % First element is the real one, so updating number of virtual time
-    % steps
-    n_virt_steps = n_virt_steps + 1;
-    
-    % Initialize vectors of path and velocities
-    traj_coor = zeros(n_virt_steps,2);
-    bound_coor = zeros(n_virt_steps,2);
-    traj_velo = zeros(n_virt_steps,2);
-    grid_coor = agent_coor;
-    
-    % Generate random numbers for noise for every step
-    virt_steps_noise = bivariate_normal(n_virt_steps);
-    % Save the first force to compute gyration later
-    traj_init_force = virt_steps_noise(1,:);
-    virt_steps_noise = noise * virt_steps_noise;
-    
-    
-    % starting the iteration for the first virtual timestep
-    traj_coor(1,:) = agent_coor(i,:);
-    traj_velo(1,:) = agent_velo(i,:);
-    bound_coor(1,:) = agent_coor(i,:);
-    
-    f_rep = repulsion_agent(agent_coor, i, diameter, area, strength, repul_type);
-    f_langevin = -friction * traj_velo(1,:) + virt_steps_noise(1,:);
-    f_tot = f_langevin + f_rep;
-    traj_coor(2,:) = traj_coor(1,:) + traj_velo(1,:)* dt + ...
-        0.5 * f_tot * (dt^2) ;
-    bound_coor(2,:) = mod(traj_coor(2,:), area);
-    traj_velo(2,:) = traj_velo(1,:) + f_tot* dt ;
-    
-    % Update the grid;
-    grid_coor(i,:) = mod(traj_coor(2,:), area);
-    
-    for j=3:n_virt_steps
-        % find repulsion force for step
-        f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
-        f_langevin = -friction * traj_velo(j-1,:) + virt_steps_noise(j,:);
-        f_tot = f_rep + f_langevin;
-        % update velocity and position of virtual timestep
-        traj_coor(j,:) = 2 * traj_coor(j-1,:) - traj_coor(j-2,:) + ...
-            f_tot * (dt^2);
-        
-        %traj_velo(j,:) = (traj_coor(j,:) - traj_coor(j-1,:))/dt;
-        traj_velo(j,:) = traj_velo(j-1,:) + f_tot * dt;
-        % update the grid:
-        bound_coor(j,:) = mod(traj_coor(j,:), area);
-        grid_coor(i,:) = mod(traj_coor(j,:), area);
-    end
-    
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
@@ -624,15 +598,15 @@ function force_rep = repulsion_agent(agent_coordinates, i, ...
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
-               
+              
 
 
 %% ------------------------------------------------------------------------
-% -------------------- Calculate All Gyrations ----------------------------
+% -------------------- Calculate All Gyrations ABP ------------------------
 % -------------------------------------------------------------------------
 function [all_gyrations,traj_init] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
-    agent_velo, sigma, box_length, repul_strength, friction, noise,...
-    timestep, n_vsteps, repul_type)
+    agent_velo, agent_energy, sigma, box_length, repul_strength, friction, D,...
+    h, n_vsteps, v_repul_type, d2, a, c, q)
 
     all_gyrations = zeros(n_agent, n_traj);
     traj_init = zeros(n_agent,n_traj,2);
@@ -642,9 +616,9 @@ function [all_gyrations,traj_init] = calc_all_gyrations(n_agent, n_traj, agent_c
         for tr=1:n_traj
 
             [virt_coor, virt_velo, ...
-                bound, traj_init_force] = virtual_traj(agent_coor, agent_velo,...
-                agent_no, n_vsteps, ...
-            sigma, box_length, repul_strength, friction, noise, timestep, repul_type);
+                bound, traj_init_force] = virtual_traj_abp(agent_coor, agent_velo,...
+                agent_energy, agent_no, n_vsteps, sigma, box_length, repul_strength,...
+                friction, D, h, v_repul_type, d2, a, c, q);
             lambdas(agent_no) = lambdas(agent_no)+...
                 sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
                 (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
@@ -655,6 +629,7 @@ function [all_gyrations,traj_init] = calc_all_gyrations(n_agent, n_traj, agent_c
         lambdas(agent_no) = lambdas(agent_no)/n_traj;
     end
     disp("Lambda is " + mean(lambdas))
+    pause(1)
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
@@ -662,68 +637,61 @@ end
 
 
 %% ------------------------------------------------------------------------
-% -------------------- One Timestep calculation ---------------------------
-% -------------------------------------------------------------------------
-function [new_coor, new_velo] = next_timestep( agent_coor, ...
-    past_agent_coor, agent_velo, timestep, ...
-    n_agent, all_gyrations, traj_init, n_traj, diameter, area, ...
-    strength, friction, noise, repul_type, synthetic)
+% ---------------------- One Timestep Calculation ABP ---------------------
+
+
+function [new_coor, new_velo, new_e] = next_timestep_abp( agent_coor, agent_velo,...
+    agent_e, h, n_agent, all_gyrations, traj_init, n_traj, diameter, area, ...
+    strength, friction, D, repul_type, synthetic, d2, a, c, q)
+    
+
     new_coor = zeros(n_agent, 2);
     new_velo = zeros(n_agent, 2);
+    new_e = zeros(n_agent,1);
+    
+    % The equations of motion and energy for the agent
+    f = {@(x1, x2, v1, v2, e) v1;
+    @(x1, x2, v1, v2, e) v2;
+    @(x1, x2, v1, v2, e, fx) d2 * e *v1 - friction * v1 - a * x1 + fx;
+    @(x1, x2, v1, v2, e, fy) d2 * e *v2 - friction * v2 - a * x2 + fy;
+    @(x1, x2, v1, v2, e) q(x1, x2) - c* e - d2* e* (v1^2 + v2^2) };
+    
+    noise = sqrt(2*D);
     for agent=1:n_agent
         if ~ismember(agent, synthetic)
-            % Calculate langevin force based on gyration
-            f_lang_agent = zeros(1,2);
+            % Calculate cognitive force based on gyration
+            f_cognitive = zeros(1,2);
             agent_mean_gyration = mean(all_gyrations(agent,:));
             for j=1:n_traj
                 norm_gyr = log(all_gyrations(agent,j)/agent_mean_gyration);
-                f_lang_agent = f_lang_agent + norm_gyr * [traj_init(agent,j,1) traj_init(agent,j,2)];
+                f_cognitive = f_cognitive + norm_gyr * [traj_init(agent,j,1) traj_init(agent,j,2)];
             end
-            f_lang_agent = f_lang_agent/n_traj;
+            f_cognitive = f_cognitive/n_traj;
             if isnan(norm_gyr)
-                f_lang_agent = -friction * agent_velo(agent,:);
+                f_cognitive = 0;
             else
-                f_lang_agent = -friction * agent_velo(agent,:) + ...
-                    noise * f_lang_agent;
+                f_cognitive = noise * f_cognitive;
             end
             f_rep = repulsion_agent(agent_coor, agent, diameter, ...
                 area, strength, repul_type);
     %         disp("Agent " + agent + ": Langevin is " + f_lang_agent)
-            f_tot = f_lang_agent + f_rep;
+            f_tot = f_cognitive + f_rep;
+            
+            % RK4
+            
+            [new_coor(agent,1), new_coor(agent,2), new_velo(agent,1),...
+                new_velo(agent,2), new_e(agent) ]= rk4_step(f, ...
+                agent_coor(agent,1), agent_coor(agent,2), agent_velo(agent,1),...
+                agent_velo(agent,2), agent_e(agent), h, ...
+                [0 0], f_tot);
 
-            % Check the boundaries for position
-            past = past_agent_coor(agent,:);
-            if (agent_coor(agent, 1)-past_agent_coor(agent,1)) > (0.5 * area)
-                past = [(past_agent_coor(agent,1) + area) past_agent_coor(agent,2)];
-            elseif (agent_coor(agent, 1)-past_agent_coor(agent,1)) < -(0.5 * area)
-                past = [(past_agent_coor(agent,1) - area) past_agent_coor(agent,2)];
-            end
-            if (agent_coor(agent, 2)-past_agent_coor(agent,2)) > (0.5 * area)
-                past = [past_agent_coor(agent,1) (past_agent_coor(agent,2) + area)];
-            elseif (agent_coor(agent, 2)-past_agent_coor(agent,2)) < -(0.5 * area)
-                past = [past_agent_coor(agent,1) (past_agent_coor(agent,2) - area)];
-            end   
-            new_coor(agent, :) = 2 * agent_coor(agent, :) - ...
-                past + f_tot * (timestep^2);
-            % Check the boundaries for velocity
-            current = agent_coor(agent, :);
-            if (new_coor(agent,1) - current(1)) > (0.5 * area)
-                current = [(current(1) + area) current(2)];
-            elseif (new_coor(agent,1) - current(1)) < - (0.5 * area)
-                current = [(current(1) - area) current(2)];
-            end
-            if (new_coor(agent,2) - current(2)) > (0.5 * area)
-                current = [current(1) (current(2) + area)];
-            elseif (new_coor(agent,2) - current(2)) < - (0.5 * area)
-                current = [current(1) (current(2) - area) ];
-            end
-            new_velo(agent, :) = (new_coor(agent,:) - current)/ timestep;
-        else
-            new_coor(agent, :) = agent_coor(agent, :);
-            new_velo(agent, :) = agent_velo(agent, :);
+            new_coor(agent,:) = mod(new_coor(agent,:), area);
+
+ 
         end
     end
 end
+
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
 
@@ -754,6 +722,17 @@ end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
 
+%% ------------------------------------------------------------------------
+% =--------------------------- Plot Circle --------------------------------
+% -------------------------------------------------------------------------
+% 
+function circle(x,r)
+    hold on
+    th = 0:pi/50:2*pi;
+    xunit = r * cos(th) + x(1);
+    yunit = r * sin(th) + x(2);
+    plot(xunit, yunit);
+end
 
 
 %% ------------------------------------------------------------------------
@@ -824,13 +803,51 @@ end
 
 
 %% ------------------------------------------------------------------------
-% ----------------------- Runge-Kutta 4 general ---------------------------
+% --------------------- RK4 again but with f provided ---------------------
 % -------------------------------------------------------------------------
-function [x1_new, x2_new, v1_new, v2_new, e_new] = rk4_step(f, x1, x2, v1, v2, e, h, diameter, ...
-    area, strength, repul_type, noise, i, grid_coor)
+function [r,v,e] = rk4(f, r0, v0, e0, d2, gamma, q, c, h, n_steps)
+   
+    r = zeros(n_steps+1, 2);
+    v = zeros(n_steps+1, 2);
+    e = zeros(n_steps+1, 1);
+
+    r(1,:) = r0;
+    v(1,:) = v0;
+    e(1) = e0;
 
 
-    f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
+    % % Now solve for number of steps
+    for i = 1:n_steps
+        k1 =  h * [f{1}(v(i,:),e(i)); f{2}(v(i,:),e(i)); f{3}(v(i,:),e(i)) 0];
+        k2 =  h * [f{1}( (v(i,:)+k1(2,:)/2 ),(e(i) + k1(3,1)/2)); ...
+            f{2}((v(i,:)+k1(2,:)/2 ),(e(i) + k1(3,1)/2));...
+            f{3}((v(i,:)+k1(2,:)/2 ),(e(i) + k1(3,1)/2)) 0];
+        k3 =  h * [f{1}( (v(i,:)+k2(2,:)/2 ),(e(i) + k2(3,1)/2)); ...
+            f{2}((v(i,:)+k2(2,:)/2 ),(e(i) + k2(3,1)/2));...
+            f{3}((v(i,:)+k2(2,:)/2 ),(e(i) + k2(3,1)/2)) 0];
+        k4 =  h * [f{1}( (v(i,:)+k3(2,:) ),(e(i) + k3(3,1))); ...
+            f{2}((v(i,:)+k3(2,:) ),(e(i) + k3(3,1)));...
+            f{3}((v(i,:)+k3(2,:) ),(e(i) + k3(3,1))) 0];
+        r(i+1,:) = r(i,:) + (k1(1,:) + 2 .* k2(1,:) + 2.* k3(1,:) + k4(1,:))./6;
+        v(i+1,:) = v(i,:) + (k1(2,:) + 2 .* k2(2,:) + 2.* k3(2,:) + k4(2,:))./6;
+        e(i+1,:) = e(i,:) + (k1(3,1) + 2 .* k2(3,1) + 2.* k3(3,1) + k4(3,1))./6;
+    %     pause(5)
+    end
+
+
+end
+
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+%% ------------------------------------------------------------------------
+% ----------------------- Runge-Kutta 4 step general ----------------------
+% -------------------------------------------------------------------------
+function [x1_new, x2_new, v1_new, v2_new, e_new] = rk4_step(f, x1, x2, v1, v2, e, h, ...
+     noise, f_rep)
+
+
+    
     k1 = h * [ f{1}(x1, x2, v1, v2, e);
         f{2}(x1, x2, v1, v2, e);
         f{3}(x1, x2, v1, v2, e, f_rep(1));
