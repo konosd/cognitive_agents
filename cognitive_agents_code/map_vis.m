@@ -9,7 +9,7 @@ type = repul_type;
 save_video=1;
 save_figure=0;   
 
-scale=10;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
+scale=5;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
 
 nvt=n_traj; %No of virtual trajectories 
 box = sigma * 80;
@@ -20,16 +20,15 @@ Br = repul_exp;
 
 
 
-file_name=strcat('ag',num2str(np),'_nvt',num2str(nvt),'_tau',num2str(tau),...
+file_name=strcat('active_ag',num2str(np),'_nvt',num2str(nvt),'_tau',num2str(tau),...
     '_s',num2str(sigma),'_L',num2str(box),'_A',num2str(Ar),'_nst',num2str(nst),...
-    '_f', type);
+    '_f', type, '_q',num2str(q0),'_potfield',num2str(a));
 
 
 for j=1:size(dir('*coor.dat'))
     % Import data
     coord=importdata('coor.dat');
     % Setup Video Writer
-    name=strcat(dir_name,'_',num2str(j))
     if save_video
         vobj = VideoWriter(strcat(file_name, 'coor.avi'),'MPEG-4');
         vobj.FrameRate = 10;

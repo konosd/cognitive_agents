@@ -1,8 +1,8 @@
 %%
 % parameters, number of agents, trajectories, etc.
 n_agent = 300;       %number of agents
-n_vsteps = 20;      %number of virtual steps
-n_steps = 1000;       %number of real steps
+n_vsteps = 40;      %number of virtual steps
+n_steps = 500;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
@@ -10,7 +10,7 @@ timestep = 0.1;     % dt timestep
 friction = 1.0;     %gamma
 temperature = 1.0;  %temperature
 noise = sqrt(2.0*friction*temperature/timestep);
-repul_strength = 10.0;
+repul_strength = 20.0;
 repul_exp = 60.0;
 repul_type = "soft";
 v_repul_type = "hard";
@@ -26,14 +26,14 @@ synthetic = [];
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
 q0 =1.0;    % energy intake from the environment
-food_radius = 1e4;
-food_center = [0.7 0.7];%[80*sigma*0.5 80*sigma*0.5];
+food_radius = 0;
+food_center = [80*sigma*0.5 80*sigma*0.5];
 q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
 d2 = 1.0;   % conversion rate of internal-to-kinetic energy
 c = 0.01;    % dissipation of internal energy
 %abp_steps = 60000; this is not used anymore. Virtual steps instead
 h = 0.1;
-D = 0.01;
+D = friction*temperature/h; %0.01;
 
 % Potential field
 a = 0;
@@ -877,4 +877,10 @@ function [x1_new, x2_new, v1_new, v2_new, e_new] = rk4_step(f, x1, x2, v1, v2, e
 end
 
 % -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+
+
+%% ------------------------------------------------------------------------
+% ------------------------ Velocity Auto-correlation ----------------------
 % -------------------------------------------------------------------------
