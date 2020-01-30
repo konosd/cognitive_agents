@@ -1,15 +1,20 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = 300;       %number of agents
-n_vsteps = 40;      %number of virtual steps
+n_agent = 400;       %number of agents
+n_vsteps = 60;      %number of virtual steps
 n_steps = 500;       %number of real steps
-n_traj = 20;        %number of trajectories
+n_traj = 15;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
-timestep = 0.1;     % dt timestep
-friction = 1.0;     %gamma
-temperature = 1.0;  %temperature
-noise = sqrt(2.0*friction*temperature/timestep);
+
+h = 0.1; %timestep = 0.001;     % dt timestep
+t = [0:h:n_vsteps*h];
+friction = 1;     %gamma
+temperature = 1;  %temperature
+
+D = friction*temperature/h; %0.01; 
+%noise = sqrt(2.0*friction*temperature/timestep);
+
 repul_strength = 20.0;
 repul_exp = 60.0;
 repul_type = "soft";
@@ -21,23 +26,20 @@ pi = 4 * atan(1);
 % vector then the agent will not move
 synthetic = [];
 
-
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 =1.0;    % energy intake from the environment
-food_radius = 0;
+q0 = 0.45;    % energy intake from the environment
+food_radius = 1e5;
 food_center = [80*sigma*0.5 80*sigma*0.5];
 q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
-d2 = 1.0;   % conversion rate of internal-to-kinetic energy
-c = 0.01;    % dissipation of internal energy
-%abp_steps = 60000; this is not used anymore. Virtual steps instead
-h = 0.1;
-D = friction*temperature/h; %0.01;
+d2 = 0.1;   % conversion rate of internal-to-kinetic energy
+c = 1.2;    % dissipation of internal energy
+
+
 
 % Potential field
 a = 0;
-
 U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
@@ -76,15 +78,15 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 % % 
 % % [r,v,e] = rk4(f, r0, v0, e0, d2, friction, q, c, h, abp_steps);
 % 
-% t = [0:h:abp_steps*h];
+% t = [0:h:n_vsteps*h];
 % 
 % % To reproduce figure 3 of abp_model paper:
 % % Initial positions
-% x1 = zeros(abp_steps+1,1);
-% x2 = zeros(abp_steps+1,1);
-% v1 = zeros(abp_steps+1, 1);
-% v2 = zeros(abp_steps+1, 1);
-% e = zeros(abp_steps+1, 1);
+% x1 = zeros(n_vsteps+1,1);
+% x2 = zeros(n_vsteps+1,1);
+% v1 = zeros(n_vsteps+1, 1);
+% v2 = zeros(n_vsteps+1, 1);
+% e = zeros(n_vsteps+1, 1);
 % 
 % x1(1) = 0; 
 % x2(1) = 0;
@@ -95,10 +97,10 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 %     @(x1, x2, v1, v2, e) v2;
 %     @(x1, x2, v1, v2, e) d2 * e *v1 - friction * v1 - a * x1 ;
 %     @(x1, x2, v1, v2, e) d2 * e *v2 - friction * v2 - a * x2;
-%     @(x1, x2, v1, v2, e) q(x1, x2) - c* e - d2* e* (v1^2 + v2^2) };
+%     @(x1, x2, v1, v2, e) 0};%q(x1, x2) - c* e - d2* e* (v1^2 + v2^2) };
 %     
 % % RK4 integration
-% for i=1:abp_steps
+% for i=1:n_vsteps
 % 
 %     k1 = h * [ f{1}(x1(i), x2(i), v1(i), v2(i), e(i));
 %         f{2}(x1(i), x2(i), v1(i), v2(i), e(i));
@@ -121,15 +123,14 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 %         f{4}(x1(i) + k3(1), x2(i)+ k3(2), v1(i)+ k3(3), v2(i)+ k3(4), e(i)+ k3(5));
 %         f{5}(x1(i) + k3(1), x2(i)+ k3(2), v1(i)+ k3(3), v2(i)+ k3(4), e(i)+ k3(5))];
 %     noise = sqrt(2*D)*bivariate_normal(1);
-%     x1(i+1) = x1(i) + (k1(1) + 2*k2(1) + 2*k3(1) + k4(1))/6 ;
-%     x2(i+1) = x2(i) + (k1(2) + 2*k2(2) + 2*k3(2) + k4(2))/6 ;
-%     v1(i+1) = v1(i) + (k1(3) + 2*k2(3) + 2*k3(3) + k4(3))/6 + noise(1) ;
-%     v2(i+1) = v2(i) + (k1(4) + 2*k2(4) + 2*k3(4) + k4(4))/6 + noise(2) ;
-%     e(i+1) = e(i) + (k1(5) + 2*k2(5) + 2*k3(5) + k4(5))/6 ;
-%     
+%     x1(i+1) = x1(i) + (k1(1) + 2*k2(1) + 2*k3(1) + k4(1))/6;
+%     x2(i+1) = x2(i) + (k1(2) + 2*k2(2) + 2*k3(2) + k4(2))/6;
+%     v1(i+1) = v1(i) + (k1(3) + 2*k2(3) + 2*k3(3) + k4(3))/6 + noise(1);
+%     v2(i+1) = v2(i) + (k1(4) + 2*k2(4) + 2*k3(4) + k4(4))/6 + noise(2);
+%     e(i+1) = q(x1(i+1),x2(i+1))/(c+d2*(v2(i+1)^2 + v1(i+1)^2));%e(i) + (k1(5) + 2*k2(5) + 2*k3(5) + k4(5))/6;
 % end
 % 
-% circle(food_center, food_radius)
+% %circle(food_center, food_radius)
 % plot(x1, x2)
 
 
@@ -139,8 +140,8 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 
 %------------ One agent One trajectory ------------------------------------
 
-% [my_traj_coor, my_traj_velo, bound, traj_init] = virtual_traj_abp(agent_coor, agent_velo, 1, ...
-%     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, 0, d2, a, c, q);
+% [my_traj_coor, my_traj_velo, bound, traj_init] = virtual_traj_abp(agent_coor, agent_velo, agent_energy, 1, ...
+%     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
 % 
 % fig = figure(1);
 % plot_agents(agent_coor, sigma, box_length, force_init, 1)
@@ -154,7 +155,7 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 % for t = 1:n_traj
 %     [my_traj_coor, my_traj_velo, bound, traj_init] = ...
 %           virtual_traj_abp(agent_coor, agent_velo, agent_energy, 1, ...
-%     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, 0, d2, a, c, q);
+%     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
 %     plot_trajectory(bound, box_length, rand(1,3))
 % end
 
@@ -175,7 +176,7 @@ force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type
 
 %-------------------------- Master Solver ABP -----------------------------
 
-[all_x, all_y, vel_x, vel_y] = cef_solver_abp( agent_coor,...
+[all_x, all_y, vel_x, vel_y, energies] = cef_solver_abp( agent_coor,...
     n_agent, n_traj, sigma, ...
     box_length, repul_strength, friction, D, h, n_vsteps, ...
     n_steps, repul_type, v_repul_type, false, synthetic, d2, a, c, q);
@@ -272,10 +273,9 @@ function [traj_coor, traj_velo, ...
     % The equations of motion and energy for the agent
     f = {@(x1, x2, v1, v2, e) v1;
     @(x1, x2, v1, v2, e) v2;
-    @(x1, x2, v1, v2, e, fx) d2 * e *v1 - friction * v1 - a * x1 + fx;
-    @(x1, x2, v1, v2, e, fy) d2 * e *v2 - friction * v2 - a * x2 + fy;
+    @(x1, x2, v1, v2, e, fx) d2 * e *v1 - friction * v1 - a * (x1) + fx;
+    @(x1, x2, v1, v2, e, fy) d2 * e *v2 - friction * v2 - a * (x2) + fy;
     @(x1, x2, v1, v2, e) q(x1, x2) - c* e - d2* e* (v1^2 + v2^2) };
-
 
     % starting the iteration for the first virtual timestep
     traj_coor(1,:) = agent_coor(i,:);
@@ -327,11 +327,13 @@ function [everything_coor_x, everything_coor_y,...
     everything_coor_x(:,1) = agent_coor(:,1);
     everything_coor_y(:,1) = agent_coor(:,2);
     
+    % Initialize velocities
     all_velo_x = zeros(n_agent, n_steps);
     all_velo_y = zeros(n_agent, n_steps);
     all_velo_x(:,1) = agent_velo(:,1);
     all_velo_y(:,1) = agent_velo(:,2);
     
+    % Initialize energies
     all_energy = zeros(n_agent,n_steps);
 
     % loop timesteps
@@ -340,6 +342,8 @@ function [everything_coor_x, everything_coor_y,...
         agent_velo = [all_velo_x(:,step-1) all_velo_y(:,step-1)];
         agent_energy = all_energy(:,step-1);
         
+        % Calculate gyrations for every step. THIS IS WHERE THE COMPUTATION
+        % HAPPENS AND TAKES TIME
         [all_gyrations, traj_init] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
             agent_velo, agent_energy, sigma, box_length, repul_strength, friction, noise,...
             h, n_vsteps, v_repul_type, d2, a, c, q);
@@ -652,8 +656,8 @@ function [new_coor, new_velo, new_e] = next_timestep_abp( agent_coor, agent_velo
     % The equations of motion and energy for the agent
     f = {@(x1, x2, v1, v2, e) v1;
     @(x1, x2, v1, v2, e) v2;
-    @(x1, x2, v1, v2, e, fx) d2 * e *v1 - friction * v1 - a * x1 + fx;
-    @(x1, x2, v1, v2, e, fy) d2 * e *v2 - friction * v2 - a * x2 + fy;
+    @(x1, x2, v1, v2, e, fx) d2 * e *v1 - friction * v1 - a * (x1) + fx;
+    @(x1, x2, v1, v2, e, fy) d2 * e *v2 - friction * v2 - a * (x2) + fy;
     @(x1, x2, v1, v2, e) q(x1, x2) - c* e - d2* e* (v1^2 + v2^2) };
     
     noise = sqrt(2*D);
@@ -870,8 +874,8 @@ function [x1_new, x2_new, v1_new, v2_new, e_new] = rk4_step(f, x1, x2, v1, v2, e
         f{5}(x1 + k3(1), x2+ k3(2), v1+ k3(3), v2+ k3(4), e+ k3(5))];
     x1_new = x1 + (k1(1) + 2*k2(1) + 2*k3(1) + k4(1))/6 ;
     x2_new = x2 + (k1(2) + 2*k2(2) + 2*k3(2) + k4(2))/6 ;
-    v1_new = v1 + (k1(3) + 2*k2(3) + 2*k3(3) + k4(3))/6 + noise(1) ;
-    v2_new = v2 + (k1(4) + 2*k2(4) + 2*k3(4) + k4(4))/6 + noise(2) ;
+    v1_new = v1 + (k1(3) + 2*k2(3) + 2*k3(3) + k4(3))/6 + h*noise(1) ;
+    v2_new = v2 + (k1(4) + 2*k2(4) + 2*k3(4) + k4(4))/6 + h*noise(2) ;
     e_new = e + (k1(5) + 2*k2(5) + 2*k3(5) + k4(5))/6 ;
 
 end
