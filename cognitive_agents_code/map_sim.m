@@ -1,6 +1,6 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = 300;       %number of agents
+n_agent = 40;       %number of agents
 n_vsteps = 40;      %number of virtual steps
 n_steps = 1000;       %number of real steps
 n_traj = 20;        %number of trajectories
@@ -21,12 +21,12 @@ phi = n_agent * pi * sigma^2 / (4* box_length^2);
 disp("Filling fraction is " + phi)
 
 %% ------------- Initialization--------------------------------------------
-% agent_coor = initialize_agents(n_agent, sigma, box_length);
-% agent_velo = zeros(n_agent,2);
+agent_coor = initialize_agents(n_agent, sigma, box_length);
+agent_velo = zeros(n_agent,2);
 
 % To start from a previous step
-agent_coor = [all_x(:,1000) all_y(: , 1000)];
-agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
+% agent_coor = [all_x(:,1000) all_y(: , 1000)];
+% agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
 
 force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
 
@@ -247,6 +247,9 @@ function [traj_coor, traj_velo, ...
         0.5 * f_tot * (dt^2) ;
     bound_coor(2,:) = mod(traj_coor(2,:), area);
     traj_velo(2,:) = traj_velo(1,:) + f_tot* dt ;
+%     db = traj_velo(1,:) + f_tot* dt ;
+%     traj_velo(2,:) = (traj_coor(2,:) - traj_coor(1,:))/dt;
+%     disp(traj_velo(2,:)-db)
     
     % Update the grid;
     grid_coor(i,:) = mod(traj_coor(2,:), area);
@@ -255,13 +258,18 @@ function [traj_coor, traj_velo, ...
         % find repulsion force for step
         f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
         f_langevin = -friction * traj_velo(j-1,:) + virt_steps_noise(j,:);
+%         f2 = -friction *db + virt_steps_noise(j,:);
+%         disp(f_langevin-f2)
+%         pause(1)
         f_tot = f_rep + f_langevin;
         % update velocity and position of virtual timestep
         traj_coor(j,:) = 2 * traj_coor(j-1,:) - traj_coor(j-2,:) + ...
             f_tot * (dt^2);
         
-        %traj_velo(j,:) = (traj_coor(j,:) - traj_coor(j-1,:))/dt;
+%         traj_velo(j,:) = (traj_coor(j,:) - traj_coor(j-1,:))/dt;
         traj_velo(j,:) = traj_velo(j-1,:) + f_tot * dt;
+%         disp((abs(traj_velo(j,:) - (traj_velo(j-1,:) + f_tot * dt))>1e-9))
+        
         % update the grid:
         bound_coor(j,:) = mod(traj_coor(j,:), area);
         grid_coor(i,:) = mod(traj_coor(j,:), area);
@@ -469,7 +477,7 @@ function [all_gyrations,traj_init] = calc_all_gyrations(n_agent, n_traj, agent_c
     all_gyrations = zeros(n_agent, n_traj);
     traj_init = zeros(n_agent,n_traj,2);
     lambdas = zeros(1, n_agent);
-    parfor agent_no = 1:n_agent
+    for agent_no = 1:n_agent
         %disp('Entering agent')
         for tr=1:n_traj
 
