@@ -1,15 +1,17 @@
 %% Visualization
 
 %% Get parameters from running the previous script
-np=n_agent;
-tau=n_vsteps;
+
+np_all = [100 300 400 500 600 700];       %number of agents
+tau = 500;%[10 20 30 40 60 80 100 120];      %number of virtual steps
+
 nst=n_steps;
 type = repul_type;
 % Choose to save video and image
 save_video=1;
 save_figure=0;   
 
-scale=1;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
+scale=5;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
 
 nvt=n_traj; %No of virtual trajectories 
 box = sigma * 80;
@@ -18,44 +20,79 @@ Br = repul_exp;
 
 %% -------------------     Set up visualization     -----------------------
 
+my_files = dir('abp_agent*vsteps100_ntraj40_steps3000_q0.1');
+filenames = strings(length(my_files),1);
+for i=1:length(my_files)
+   filenames(i) = my_files(i).name;
+end
 
 
-file_name=strcat('new_abp_',num2str(np),'_nvt',num2str(nvt),'_tau',num2str(tau),...
-    '_s',num2str(sigma),'_L',num2str(box),'_A',num2str(Ar),'_nst',num2str(nst),...
-    '_f', type, '_q',num2str(q0),'_potfield',num2str(a));
+% % Video Creation
+% for j=1:size(filenames)
+%     % Import data
+%     dir_in_loop = filenames(j);
+%     np = np_all( floor((j-1)/1) + 1);
+%     coord=importdata(strcat(dir_in_loop + '/coor.dat'));
+%     % Setup Video Writer
+%     if save_video
+%         video_path = char(strcat('/project/home19/kn119/Documents/cognitive_agents/cognitive_agents_code/' +dir_in_loop + '/coor.avi'));
+%         vobj = VideoWriter(video_path);
+%         vobj.FrameRate = 10;
+%         vobj.open;
+%     end
+%     fig = figure(1);
+%     for i = 1:length(coord)/np
+%         rows = linspace(i*np-np+1,i*np,np);
+%         vx=coord(rows,3)*scale;
+%         vy=coord(rows,4)*scale;
+% 
+%         plot(coord(rows,1),coord(rows,2),'.','MarkerSize',30,'color','r');
+%         hold on
+%         quiver(coord(rows,1),coord(rows,2),vx,vy,'AutoScale','off','color','k', ...
+%             'ShowArrowHead','on','LineWidth',1);
+%         line('XData', [0 0], 'YData', [0 box], 'LineStyle', '-', ...
+%             'LineWidth', 1, 'Color','k');
+%         line('XData', [box box], 'YData', [0 box], 'LineStyle', '-', ...
+%             'LineWidth', 1, 'Color','k');
+%         line('XData', [0 box], 'YData', [box box], 'LineStyle', '-', ...
+%             'LineWidth', 1, 'Color','k');
+%         line('XData', [0 box], 'YData', [0 0], 'LineStyle', '-', ...
+%             'LineWidth', 1, 'Color','k');
+%         axis equal
+%         grid on;
+%         axis([0 box 0 box]);
+%         title(i)
+%         drawnow
+%         clear rows
+%         hold off
+% 
+%          if save_video
+%              frame = getframe(fig);
+%              writeVideo(vobj,frame);
+%          end
+%     end
+% 
+%     if save_figure
+%         saveas(strcat(dir_in_loop,"/coor.png"));
+%     end
+%     if save_video
+%         vobj.close;
+%         vobj.delete;
+%     end
+% end
 
 
-for j=1:size(dir('*coor.dat'))
+% Image Creation
+for j=1:size(filenames)
     % Import data
-    coord=importdata('coor.dat');
-    % Setup Video Writer
-    if save_video
-        vobj = VideoWriter(strcat(file_name, 'coor.avi'),'MPEG-4');
-        vobj.FrameRate = 10;
-        vobj.open;
-    end
+    dir_in_loop = filenames(j);
+    np = np_all( floor((j-1)/1) + 1);
+    coord=importdata(strcat(dir_in_loop + '/coor.dat'));
     fig = figure(1);
-    for i = 1:length(coord)/np
+    for i = length(coord)/np:length(coord)/np
         rows = linspace(i*np-np+1,i*np,np);
-        vx=coord(rows,3)*scale;
-        vy=coord(rows,4)*scale;
 
-        plot(coord(rows,1),coord(rows,2),'.','MarkerSize',30,'color','r');
-        hold on
-        quiver(coord(rows,1),coord(rows,2),vx,vy,'AutoScale','off','color','k', ...
-            'ShowArrowHead','on','LineWidth',1);
-        line('XData', [0 0], 'YData', [0 box], 'LineStyle', '-', ...
-            'LineWidth', 1, 'Color','k');
-        line('XData', [box box], 'YData', [0 box], 'LineStyle', '-', ...
-            'LineWidth', 1, 'Color','k');
-        line('XData', [0 box], 'YData', [box box], 'LineStyle', '-', ...
-            'LineWidth', 1, 'Color','k');
-        line('XData', [0 box], 'YData', [0 0], 'LineStyle', '-', ...
-            'LineWidth', 1, 'Color','k');
-        axis equal
-        grid on;
-        axis([0 box 0 box]);
-        title(i)
+        plot
         drawnow
         clear rows
         hold off
@@ -67,10 +104,33 @@ for j=1:size(dir('*coor.dat'))
     end
 
     if save_figure
-        saveas(strcat(file_name,'coor.png'));
+        saveas(strcat(dir_in_loop,"/coor.png"));
     end
     if save_video
         vobj.close;
         vobj.delete;
     end
+end
+
+
+
+
+
+
+function plot_agents(agent_coordinates, diameter, box_length)
+    theta = 0:0.01:2*pi;
+    for k = 1: length(agent_coordinates)
+        xCenter = agent_coordinates(k,1);
+        yCenter = agent_coordinates(k,2);
+        thisX = diameter * 0.5 * cos(theta) + xCenter;
+        thisY = diameter * 0.5 * sin(theta) + yCenter;
+        plot(xCenter, yCenter, 'r+', 'MarkerSize', 10, 'LineWidth', 1);
+        text(xCenter, yCenter, num2str(k));
+        hold on;
+        plot(thisX, thisY, 'b-', 'LineWidth', 2);
+    end
+    grid off;
+    xlim([0, box_length]);
+    ylim([0, box_length])
+    hold off;
 end
