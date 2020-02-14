@@ -1,18 +1,19 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = [100 300 400 500 600 700];       %number of agents
-n_vsteps = [100, 500, 800];      %number of virtual steps
-n_steps = 3000;       %number of real steps
-n_traj = 40;        %number of trajectories
+n_agent = [100];       %number of agents
+n_vsteps = [800];      %number of virtual steps
+n_steps = 120;       %number of real steps
+n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.05; %timestep = 0.001;     % dt timestep
+h = 0.01; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
+virt_t = [0:h:(n_vsteps)*h];
 friction = 1;     %gamma
 temperature = 1;  %temperature
 
-D = friction*temperature/h; %0.01; 
+D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
 
 repul_strength = 20.0;
@@ -29,7 +30,7 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [1 2.5 10];    % energy intake from the environment
+q0 = [0];    % energy intake from the environment
 food_radius = 1e20;
 food_center = [80*sigma*0.5 80*sigma*0.5];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
@@ -45,23 +46,46 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
 
-% -------------------------------------------------------------------------
+%-------------------------------------------------------------------------
+%% ------------------ Initialization -------------------------------------
+% k = 1; %index for number of agents
+% iq = 1; % index for magnitutde of energy influx
+% l = 1; % index for number of virtual steps
+% 
+% % Filling fraction:
+% phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
+% disp("Filling fraction is " + phi)
+% 
+% 
+% agent_coor = initialize_agents(n_agent(k), sigma, box_length);
+% agent_velo = sqrt(2*D*h)*bivariate_normal(n_agent(k));
+% 
+% % To start from a previous step
+% % agent_coor = [all_x(:,1000) all_y(: , 1000)];
+% % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
+% 
+% force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
+% 
+% q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
+
 
 %% ----------- To visualize one virtual trajectory of one agent -----------
 
 % [my_traj_coor, my_traj_velo, bound, traj_init] = virtual_traj(agent_coor, agent_velo, 1, ...
-%     n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep, v_repul_type);
+%     n_vsteps(l), sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
+%     
 % 
 % fig = figure(1);
 % plot_agents(agent_coor, sigma, box_length, force_init, 1)
 % plot_trajectory(bound, box_length, rand(1,3))
 
 %% ----------- To visualize all virtual trajectories of one agent ---------
+% ----------------------- and
 % fig = figure(1);
 % plot_agents(agent_coor, sigma, box_length, force_init, 1)
 % for tr = 1:n_traj
 %    [my_virt_traj, my_virt_velo, bound, traj_init] =  virtual_traj(agent_coor, agent_velo, 1, ...
-%      n_vsteps, sigma, box_length, repul_strength, friction, noise, timestep, v_repul_type);
+%      n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
 %     plot_trajectory(bound, box_length, rand(1,3))
 % end
 
@@ -79,7 +103,7 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 % end
 
 %% ---- To visualize everything, solve the full problem, chunk below ------
-% 
+% % 
 for iq = 1:length(q0)
     for l=1:length(n_vsteps)
         for k=1:length(n_agent)
@@ -124,8 +148,12 @@ for iq = 1:length(q0)
         end
     end
 end
-%% ---------------------- End of main --------------------------------------
 
+
+
+
+
+%% ---------------------- End of main -------------------------------------
 % -------------------------------------------------------------------------
 %% --------------------- Helper Functions ---------------------------------
 % -------------------------------------------------------------------------
@@ -154,7 +182,7 @@ function init_agents = initialize_agents(n_agents, agent_diameter, box_dim)
     % --------- First set randomly the agents in the box --------------
     % make sure we have enough space
     theor_max = (fix(box_dim*0.5))^2;     %maximum number of agents
-    min_distance = 1.1 * agent_diameter;
+    min_distance = 2.1 * agent_diameter;
     radius = agent_diameter * 0.5;
     allowed_length = box_dim - agent_diameter;
     if n_agents >= theor_max
@@ -332,9 +360,9 @@ function [traj_coor, traj_velo, ...
     grid_coor = agent_coor;
     
     % Generate random numbers for noise for every step
-    virt_steps_noise = sqrt(2*D) * bivariate_normal(n_virt_steps);
+    dw = sqrt(2*D*h) * bivariate_normal(n_virt_steps);
     % Save the first force to compute gyration later
-    traj_init_force = virt_steps_noise(1,:)/sqrt(2*D);
+    traj_init_force = dw(1,:); %/sqrt(2*D);
     
     
     % starting the iteration for the first virtual timestep
@@ -342,35 +370,35 @@ function [traj_coor, traj_velo, ...
     traj_velo(1,:) = agent_velo(i,:);
     bound_coor(1,:) = agent_coor(i,:);
     
-    f_rep = repulsion_agent(agent_coor, i, diameter, area, strength, repul_type);
-    f_langevin = -friction * traj_velo(1,:) + virt_steps_noise(1,:) + ...
-        q(traj_coor(1), traj_coor(2)) * d2 * traj_velo(1,:)/(c+d2*norm(traj_velo(1,:))^2);
-    f_tot = f_langevin + f_rep;
-    traj_coor(2,:) = traj_coor(1,:) + traj_velo(1,:)* h + ...
-        0.5 * f_tot * (h^2) ;
-    bound_coor(2,:) = mod(traj_coor(2,:), area);
-%     traj_velo(2,:) = traj_velo(1,:) + f_tot* h ;
-%     db = traj_velo(1,:) + f_tot* dt ;
-    traj_velo(2,:) = (traj_coor(2,:) - traj_coor(1,:))/h;
-%     disp(traj_velo(2,:)-db)
+%     f_rep = repulsion_agent(agent_coor, i, diameter, area, strength, repul_type)
+%     f_langevin = -friction * traj_velo(1,:) + dw(1,:) + ...
+%         q(traj_coor(1), traj_coor(2)) * d2 * traj_velo(1,:)/(c+d2*norm(traj_velo(1,:))^2)
+%     f_tot = f_langevin + f_rep
+%     traj_coor(2,:) = traj_coor(1,:) + traj_velo(1,:)* h + ...
+%         0.5 * f_tot * (h^2) ;
+%     bound_coor(2,:) = mod(traj_coor(2,:), area);
+% %     traj_velo(2,:) = traj_velo(1,:) + f_tot* h ;
+% %     db = traj_velo(1,:) + f_tot* dt ;
+%     traj_velo(2,:) = (traj_coor(2,:) - traj_coor(1,:))/h;
+% %     disp(traj_velo(2,:)-db)
+%     
+%     % Update the grid;
+%     grid_coor(i,:) = mod(traj_coor(2,:), area);
     
-    % Update the grid;
-    grid_coor(i,:) = mod(traj_coor(2,:), area);
-    
-    for j=3:n_virt_steps
+% Euler-Murayama method
+    for j=2:n_virt_steps
         % find repulsion force for step
         f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
-        f_langevin = -friction * traj_velo(j-1,:) + virt_steps_noise(j,:)+ ...
+        f_det = f_rep -friction * traj_velo(j-1,:) + ...
         q(traj_coor(1), traj_coor(2)) * d2 * traj_velo(j-1,:)/(c+d2*norm(traj_velo(j-1,:))^2);
 %         f2 = -friction *db + virt_steps_noise(j,:);
 %         disp(f_langevin-f2)
 %         pause(1)
-        f_tot = f_rep + f_langevin;
         % update velocity and position of virtual timestep
-        traj_coor(j,:) = 2 * traj_coor(j-1,:) - traj_coor(j-2,:) + ...
-            f_tot * (h^2);
+        traj_velo(j,:) = traj_velo(j-1,:) + h*f_det + ...
+            dw(j,:);
         
-        traj_velo(j,:) = (traj_coor(j,:) - traj_coor(j-1,:))/h;
+        traj_coor(j,:) = traj_coor(j-1,:) + h*traj_velo(j-1,:);
 %         traj_velo(j,:) = traj_velo(j-1,:) + f_tot * h;
 %         disp((abs(traj_velo(j,:) - (traj_velo(j-1,:) + f_tot * dt))>1e-9))
         
