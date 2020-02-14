@@ -1,4 +1,4 @@
-%%
+%% -----------------------------------------------------------------------------
 % parameters, number of agents, trajectories, etc.
 n_agent = 50;       %number of agents
 n_vsteps = 30;      %number of virtual steps
@@ -224,7 +224,7 @@ save coor.dat coordat -ascii
 
 % %% ---- To visualize everything, solve the full problem, chunk below ------
 % % 
-% [all_x, all_y, vel_x, vel_y] = cef_solver( agent_coor,...
+% [all_x, all_y, vel_x, vel_y, lambdas] = cef_solver( agent_coor,...
 %     n_agent, n_traj, sigma, ...
 %     box_length, repul_strength, friction, noise, timestep, n_vsteps, ...
 %     n_steps, repul_type, v_repul_type, false, synthetic);
@@ -332,7 +332,7 @@ function [everything_coor_x, everything_coor_y,...
     all_velo_y = zeros(n_agent, n_steps);
     all_velo_x(:,1) = agent_velo(:,1);
     all_velo_y(:,1) = agent_velo(:,2);
-    
+    lambdas = zeros(n_steps,1);
     % Initialize energies
     all_energy = zeros(n_agent,n_steps);
 
@@ -344,7 +344,7 @@ function [everything_coor_x, everything_coor_y,...
         
         % Calculate gyrations for every step. THIS IS WHERE THE COMPUTATION
         % HAPPENS AND TAKES TIME
-        [all_gyrations, traj_init] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
+        [all_gyrations, traj_init, lambdas(step)] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
             agent_velo, agent_energy, sigma, box_length, repul_strength, friction, noise,...
             h, n_vsteps, v_repul_type, d2, a, c, q, synthetic);
 
@@ -606,39 +606,38 @@ end
 
 
 %% ------------------------------------------------------------------------
-% -------------------- Calculate All Gyrations ABP ------------------------
+% -------------------- Calculate All Gyrations ----------------------------
 % -------------------------------------------------------------------------
-function [all_gyrations,traj_init] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
-    agent_velo, agent_energy, sigma, box_length, repul_strength, friction, D,...
-    h, n_vsteps, v_repul_type, d2, a, c, q, synthetic)
+function [all_gyrations,traj_init, lambda] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
+    agent_velo, sigma, box_length, repul_strength, friction, noise,...
+    timestep, n_vsteps, repul_type)
 
     all_gyrations = zeros(n_agent, n_traj);
     traj_init = zeros(n_agent,n_traj,2);
     lambdas = zeros(1, n_agent);
     parfor agent_no = 1:n_agent
-        if ~ismember(agent_no, synthetic)
-            %disp('Entering agent')
-            for tr=1:n_traj
+        %disp('Entering agent')
+        for tr=1:n_traj
 
-                [virt_coor, virt_velo, ...
-                    bound, traj_init_force] = virtual_traj_abp(agent_coor, agent_velo,...
-                    agent_energy, agent_no, n_vsteps, sigma, box_length, repul_strength,...
-                    friction, D, h, v_repul_type, d2, a, c, q);
-                lambdas(agent_no) = lambdas(agent_no)+...
-                    sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
-                    (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
-                %plot_trajectory(virt_coor,box_length, rand(1,3))
-                all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
-                traj_init(agent_no, tr,:) = traj_init_force;
-            end
+            [virt_coor, virt_velo, ...
+                bound, traj_init_force] = virtual_traj(agent_coor, agent_velo,...
+                agent_no, n_vsteps, ...
+            sigma, box_length, repul_strength, friction, noise, timestep, repul_type);
+            lambdas(agent_no) = lambdas(agent_no)+...
+                sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
+                (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
+            %plot_trajectory(virt_coor,box_length, rand(1,3))
+            all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
+            traj_init(agent_no, tr,:) = traj_init_force;
         end
         lambdas(agent_no) = lambdas(agent_no)/n_traj;
     end
-    disp("Lambda is " + mean(lambdas))
-    pause(1)
- end
+    lambda = mean(lambdas);
+    disp("Lambda is " + lambda)
+end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
+
 
 
 

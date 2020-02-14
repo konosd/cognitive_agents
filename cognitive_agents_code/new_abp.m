@@ -7,7 +7,7 @@ n_traj = 40;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.01; %timestep = 0.001;     % dt timestep
+h = 0.05; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 friction = 1;     %gamma
 temperature = 1;  %temperature
@@ -29,7 +29,7 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [0.1 1 2.5 10];    % energy intake from the environment
+q0 = [1 2.5 10];    % energy intake from the environment
 food_radius = 1e20;
 food_center = [80*sigma*0.5 80*sigma*0.5];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
