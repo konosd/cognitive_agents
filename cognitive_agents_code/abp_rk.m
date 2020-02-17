@@ -1,13 +1,13 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = [101];       %number of agents
+n_agent = [1];       %number of agents
 n_vsteps = [100];      %number of virtual steps
 n_steps = 1000;       %number of real steps
-n_traj = 20;        %number of trajectories
+n_traj = 360;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.001; %timestep = 0.001;     % dt timestep
+h = 0.01; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
 friction = 1;     %gamma
@@ -18,8 +18,8 @@ D = friction*temperature; %0.01;
 
 repul_strength = 20.0;
 repul_exp = 60.0;
-repul_type = "soft";
-v_repul_type = "hard";
+repul_type = "exponential";
+v_repul_type = "exponential";
 pi = 4 * atan(1);
 
 % Add synthetic agents - this is where you define whether an agent will be
@@ -77,11 +77,11 @@ agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
 % % To start with agent 1 in a box of other agents but not centered
 % For synthetic ones
             synthetic = [2:n_agent];
-            agent_coor = [ [(box_length/2-9*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
+            agent_coor = [ [(box_length/2-11*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
             ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-            [(box_length/2-9*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
+            [(box_length/2-11*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
             ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
             ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
@@ -108,7 +108,7 @@ fig = figure(1);
 plot_agents(agent_coor, sigma, box_length, force_init, 1)
 
 e_cef = [0 0];
-for loopa = 1:100
+for loopa = 1:1
 gyrations = zeros(n_traj,1);
 traj_init=zeros(n_traj,2);
 cef = [0 0];
@@ -128,7 +128,7 @@ e_cef = e_cef + cef;
 hold on
 quiver(agent_coor(1,1), agent_coor(1,2), cef(1)*n_traj, cef(2)*n_traj*1, 'AutoScale','off');
 end
-quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj/10, e_cef(2)*n_traj/10, 'AutoScale','off', 'LineWidth',2);
+quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj/10, e_cef(2)*n_traj/10, 'AutoScale','off', 'LineWidth',4);
 
 
 
@@ -331,6 +331,30 @@ function force_rep = repulsion(agent_coordinates, diameter, area,...
                 end
             end
         end
+    elseif type == "exponential"
+        force_rep = zeros(length(agent_coordinates), 2);
+        for i = 1:size(agent_coordinates,1)
+            for j = 1:size(agent_coordinates,1)
+                Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
+                Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
+                if Dx > 0.5 * area
+                    Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
+                elseif Dx < -0.5 *area
+                    Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
+                end
+                if Dy > 0.5 * area
+                    Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
+                elseif Dy < -0.5 *area
+                    Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
+                end
+                ag_dist = sqrt(Dx^2 + Dy^2);
+                if i ~= j 
+                    magnitude = strength / (ag_dist)^2 ;
+                    force_rep(i,1) = force_rep(i,1) + magnitude * Dx/ ag_dist;
+                    force_rep(i,2) = force_rep(i,2) + magnitude * Dy/ ag_dist;
+                end
+            end
+        end
     end
 end
 % -------------------------------------------------------------------------
@@ -389,6 +413,28 @@ function force_rep = repulsion_agent(agent_coordinates, i, ...
             ag_dist = sqrt(Dx^2 + Dy^2);
             if i ~= j && ag_dist < 2 * diameter
                 magnitude = strength;
+                force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
+                force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
+            end
+        end
+    elseif type == "exponential"
+        force_rep = zeros(1, 2);
+        for j = 1:size(agent_coordinates,1)
+            Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
+            Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
+            if Dx > 0.5 * area
+                Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
+            elseif Dx < -0.5 *area
+                Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
+            end
+            if Dy > 0.5 * area
+                Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
+            elseif Dy < -0.5 *area
+                Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
+            end
+            ag_dist = sqrt(Dx^2 + Dy^2);
+            if i ~= j 
+                magnitude = strength / (ag_dist^2);
                 force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
                 force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
             end
