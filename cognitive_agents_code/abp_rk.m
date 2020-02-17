@@ -1,17 +1,17 @@
 %%
 % parameters, number of agents, trajectories, etc.
 n_agent = [101];       %number of agents
-n_vsteps = [800];      %number of virtual steps
-n_steps = 1200;       %number of real steps
+n_vsteps = [100];      %number of virtual steps
+n_steps = 1000;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.1; %timestep = 0.001;     % dt timestep
+h = 0.001; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
 friction = 1;     %gamma
-temperature = 1;  %temperature
+temperature = 10;  %temperature
 
 D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
@@ -55,25 +55,37 @@ l = 1; % index for number of virtual steps
 % Filling fraction:
 phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
 disp("Filling fraction is " + phi)
+% 
+% 
+% agent_coor = initialize_agents(n_agent(k), sigma, box_length);
+agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
+% 
+% % To start from a previous step
+% % agent_coor = [all_x(:,1000) all_y(: , 1000)];
+% % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
+% 
+% % To start with agent 1 in a box of other agents
+% agent_coor = [ [box_length/2; ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
+%     ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
+%     [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
+%     [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
+%     [box_length/2 ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
+%     [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
+%     ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
+%     ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
+%     
+% % To start with agent 1 in a box of other agents but not centered
+% For synthetic ones
+            synthetic = [2:n_agent];
+            agent_coor = [ [(box_length/2-9*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
+            ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
+            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
+            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
+            [(box_length/2-9*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
+            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
+            ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
+            ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
 
-
-agent_coor = initialize_agents(n_agent(k), sigma, box_length);
-agent_velo = sqrt(2*D*h)*bivariate_normal(n_agent(k));
-
-% To start from a previous step
-% agent_coor = [all_x(:,1000) all_y(: , 1000)];
-% agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
-
-% To start with agent 1 in a box of other agents
-agent_coor = [ [box_length/2; ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
-    ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
-    [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
-    [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-    [box_length/2 ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
-    [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
-    ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
-    ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
-    
 
 force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
 
@@ -92,17 +104,32 @@ q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_
 
 %% ----------- To visualize all virtual trajectories of one agent ---------
 % %------------------- and plot causal entropic force ----------------------
-% fig = figure(1);
-% plot_agents(agent_coor, sigma, box_length, force_init, 1)
-% gyrations = zeros(n_traj,1);
-% for tr = 1:n_traj
-%    [my_virt_traj, my_virt_velo, bound, traj_init] =  virtual_traj(agent_coor, agent_velo, 1, ...
-%      n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
+fig = figure(1);
+plot_agents(agent_coor, sigma, box_length, force_init, 1)
+
+e_cef = [0 0];
+for loopa = 1:100
+gyrations = zeros(n_traj,1);
+traj_init=zeros(n_traj,2);
+cef = [0 0];
+for tr = 1:n_traj
+   [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
+     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
 %     plot_trajectory(bound, box_length, rand(1,3))
-%     gyrations(tr) = calc_gyration(my_virt_traj)
-%     cef = 
-%     
-% end
+    gyrations(tr) = calc_gyration(my_virt_traj);
+end
+mean_gyr = mean(gyrations);
+for j=1:n_traj
+    norm_gyr = log(gyrations(j)/mean_gyr);
+    cef = cef + norm_gyr*[traj_init(j,1) traj_init(j,2)];
+end
+cef = cef/n_traj;
+e_cef = e_cef + cef;
+hold on
+quiver(agent_coor(1,1), agent_coor(1,2), cef(1)*n_traj, cef(2)*n_traj*1, 'AutoScale','off');
+end
+quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj/10, e_cef(2)*n_traj/10, 'AutoScale','off', 'LineWidth',2);
+
 
 
 %% ---------- To visualize all virtual trajectories of all agents ---------
@@ -119,65 +146,69 @@ q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_
 % end
 
 %% ---- To visualize everything, solve the full problem, chunk below ------
-% % 
-for iq = 1:length(q0)
-    for l=1:length(n_vsteps)
-        for k=1:length(n_agent)
-
-
-                    % Filling fraction:
-            phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
-            disp("Filling fraction is " + phi)
-
-
-            %% ------------- Initialization--------------------------------------------
-            agent_coor = initialize_agents(n_agent(k), sigma, box_length);
-            agent_velo = zeros(n_agent(k),2);
-
-            % To start from a previous step
-            % agent_coor = [all_x(:,1000) all_y(: , 1000)];
-            % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
-
-            % For synthetic ones
-            synthetic = [2:n_agent];
-            agent_coor = [ [box_length/2; ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
-            ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-            [box_length/2 ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
-            ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
-            ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
-
-
-
-            force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
-
-            q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
-
-            dir_name = strcat("abp_agent" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
-            mkdir(dir_name)
-
-            [all_x, all_y, vel_x, vel_y, lambda] = cef_solver( agent_coor,...
-                n_agent(k), n_traj, sigma, ...
-                box_length, repul_strength, friction, D, h, n_vsteps(l), ...
-                n_steps, repul_type, v_repul_type, false, d2, a, c, q, synthetic);
-
-            incr = 4;
-            coordat = zeros(n_agent(k) * n_steps / incr, 4);
-            for i=1:n_steps/4
-                coordat(((i-1)*n_agent(k)+1):(i*n_agent(k)) , :) = [all_x(:,i) all_y(:,i) ...
-                    vel_x(:,i) vel_y(:,i)];
-            end
-
-            save(strcat(dir_name, "/coor.dat"), 'coordat', "-ascii")
-
-            save(strcat(dir_name, "/lambdas.dat"), 'lambda', "-ascii")
-
-        end
-    end
-end
-
+% % % 
+% for iq = 1:length(q0)
+%     for l=1:length(n_vsteps)
+%         for k=1:length(n_agent)
+% 
+% 
+%                     % Filling fraction:
+%             phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
+%             disp("Filling fraction is " + phi)
+% 
+% 
+%             %% ------------- Initialization--------------------------------------------
+%             agent_coor = initialize_agents(n_agent(k), sigma, box_length);
+%             agent_velo = zeros(n_agent(k),2);
+% 
+%             % To start from a previous step
+%             % agent_coor = [all_x(:,1000) all_y(: , 1000)];
+%             % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
+% 
+%             % For synthetic ones
+%             synthetic = [2:n_agent];
+%             agent_coor = [ [(box_length/2-10*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
+%             ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
+%             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
+%             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
+%             [(box_length/2-10*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
+%             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
+%             ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
+%             ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
+% 
+% 
+% 
+%             force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
+% 
+%             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
+% 
+%             dir_name = strcat("synthetic_agent" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+%             mkdir(dir_name)
+% 
+%             [all_x, all_y, vel_x, vel_y, lambda, all_cfx, all_cfy] = cef_solver( agent_coor,...
+%                 n_agent(k), n_traj, sigma, ...
+%                 box_length, repul_strength, friction, D, h, n_vsteps(l), ...
+%                 n_steps, repul_type, v_repul_type, false, d2, a, c, q, synthetic);
+% 
+%             incr = 4;
+%             coordat = zeros(n_agent(k) * n_steps / incr, 4);
+%             cfdat = zeros(n_agent(k) * n_steps / incr, 2);
+%             for i=1:n_steps/4
+%                 coordat(((i-1)*n_agent(k)+1):(i*n_agent(k)) , :) = [all_x(:,i) all_y(:,i) ...
+%                     vel_x(:,i) vel_y(:,i)];
+%                 cfdat(((i-1)*n_agent(k)+1):(i*n_agent(k)), :) = [all_cfx(:,i) all_cfy(:,i)];
+%             end
+% 
+%             save(strcat(dir_name, "/coor.dat"), 'coordat', "-ascii")
+%             
+%             save(strcat(dir_name, "/cf.dat"), 'cfdat', "-ascii")
+% 
+%             save(strcat(dir_name, "/lambdas.dat"), 'lambda', "-ascii")
+% 
+%         end
+%     end
+% end
+% 
 
 
 
@@ -465,27 +496,28 @@ end
 % -------------------------------------------------------------------------
 function [all_gyrations,traj_init, lambda] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
     agent_velo, sigma, box_length, repul_strength, friction, D,...
-    timestep, n_vsteps, repul_type, d2, a, c, q)
+    timestep, n_vsteps, repul_type, d2, a, c, q, synthetic)
 
     all_gyrations = zeros(n_agent, n_traj);
     traj_init = zeros(n_agent,n_traj,2);
     lambdas = zeros(1, n_agent);
-    parfor agent_no = 1:n_agent
-        %disp('Entering agent')
-        for tr=1:n_traj
-
-            [virt_coor, virt_velo, ...
-                bound, traj_init_force] = virtual_traj(agent_coor, agent_velo,...
-                agent_no, n_vsteps, sigma, box_length, repul_strength, ...
-                friction, D, timestep, repul_type, d2, a, c, q);
-            lambdas(agent_no) = lambdas(agent_no)+...
-                sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
-                (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
-            %plot_trajectory(virt_coor,box_length, rand(1,3))
-            all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
-            traj_init(agent_no, tr,:) = traj_init_force;
+    for agent_no = 1:n_agent
+        if ~ismember(agent_no, synthetic)
+            %disp('Entering agent')
+            for tr=1:n_traj
+                [virt_coor, virt_velo, ...
+                    bound, traj_init_force] = virtual_traj(agent_coor, agent_velo,...
+                    agent_no, n_vsteps, sigma, box_length, repul_strength, ...
+                    friction, D, timestep, repul_type, d2, a, c, q);
+                lambdas(agent_no) = lambdas(agent_no)+...
+                    sqrt((virt_coor(1,1)-virt_coor(n_vsteps,1))^2 + ...
+                    (virt_coor(1,2)-virt_coor(n_vsteps,2))^2);
+                %plot_trajectory(virt_coor,box_length, rand(1,3))
+                all_gyrations(agent_no, tr) = calc_gyration(virt_coor);
+                traj_init(agent_no, tr,:) = traj_init_force;
+            end
+            lambdas(agent_no) = lambdas(agent_no)/n_traj;
         end
-        lambdas(agent_no) = lambdas(agent_no)/n_traj;
     end
     lambda = mean(lambdas);
     disp("Lambda is " + lambda)
@@ -498,12 +530,13 @@ end
 %% ------------------------------------------------------------------------
 % -------------------- One Timestep calculation ---------------------------
 % -------------------------------------------------------------------------
-function [new_coor, new_velo] = next_timestep( agent_coor, ...
+function [new_coor, new_velo, cog_force] = next_timestep( agent_coor, ...
     past_agent_coor, agent_velo, timestep, n_agent, all_gyrations, ...
     traj_init, n_traj, diameter, area, strength, friction, D, repul_type,...
     d2, a, c, q, synthetic)
     new_coor = zeros(n_agent, 2);
     new_velo = zeros(n_agent, 2);
+    cog_force = zeros(n_agent, 2);
     for agent=1:n_agent
         if ~ismember(agent, synthetic)
             % Calculate langevin force based on gyration
@@ -528,7 +561,10 @@ function [new_coor, new_velo] = next_timestep( agent_coor, ...
                 area, strength, repul_type);
     %         disp("Agent " + agent + ": Langevin is " + f_lang_agent)
             f_tot = f_lang_agent + f_rep;
-
+            
+            % Add cognitive force log
+            cog_force(agent,:) = f_lang_agent;
+            
             % Check the boundaries for position
             past = past_agent_coor(agent,:);
             if (agent_coor(agent, 1)-past_agent_coor(agent,1)) > (0.5 * area)
@@ -558,7 +594,6 @@ function [new_coor, new_velo] = next_timestep( agent_coor, ...
             new_velo(agent, :) = (new_coor(agent,:) - current)/ timestep;
         else
             new_coor(agent,:) = agent_coor(agent,:);
-            new_velo = zeros(n_agent, 2);
         end
     end
 end
@@ -570,7 +605,7 @@ end
 %% ------------------------------------------------------------------------
 % --------------------------- All timesteps -------------------------------
 % -------------------------------------------------------------------------
-function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y, lambda] =...
+function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y, lambda, cfx, cfy] =...
     cef_solver( agent_coor,...
     n_agent, n_traj, sigma, ...
     box_length, repul_strength, friction, D, timestep, n_vsteps, ...
@@ -594,13 +629,15 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y, lambda] 
     all_velo_y(:,1) = agent_velo(:,2);
 
     lambda = zeros(n_steps,1);
+    cfx = zeros(n_agent, n_steps);
+    cfy = zeros(n_agent, n_steps);
     
     % first timestep
     [all_gyrations, traj_init, lambda(2)] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
         agent_velo, sigma, box_length, repul_strength, friction, D,...
-        timestep, n_vsteps, v_repul_type, d2, a, c, q);
+        timestep, n_vsteps, v_repul_type, d2, a, c, q, synthetic);
 
-    [new_coor, new_velo] = next_timestep( agent_coor, ...
+    [new_coor, new_velo, cf_tot] = next_timestep( agent_coor, ...
         agent_coor, agent_velo, timestep, ...
         n_agent, all_gyrations, traj_init, n_traj, sigma, box_length, repul_strength, ...
         friction, D, repul_type, d2, a, c, q, synthetic);
@@ -608,6 +645,8 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y, lambda] 
     everything_coor_y(:,2) = mod(new_coor(:,2), box_length);
     all_velo_x(:,2) = new_velo(:,1);
     all_velo_y(:,2) = new_velo(:,2);
+    cfx(:,1) = cf_tot(:,1);
+    cfy(:,1) = cf_tot(:,2);
 
     %next timesteps
     for step=3:n_steps
@@ -616,9 +655,9 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y, lambda] 
         agent_velo = [all_velo_x(:,step-1) all_velo_y(:,step-1)];
         [all_gyrations, traj_init, lambda(step)] = calc_all_gyrations(n_agent, n_traj, agent_coor,...
             agent_velo, sigma, box_length, repul_strength, friction, D,...
-            timestep, n_vsteps, v_repul_type, d2, a, c, q);
+            timestep, n_vsteps, v_repul_type, d2, a, c, q, synthetic);
 
-        [new_coor, new_velo] = next_timestep( agent_coor, ...
+        [new_coor, new_velo, cf_tot] = next_timestep( agent_coor, ...
             past_agent_coor, agent_velo, timestep, ...
             n_agent, all_gyrations, traj_init, n_traj, sigma, box_length, repul_strength, ...
             friction, D, repul_type, d2, a, c, q, synthetic);
@@ -626,6 +665,8 @@ function [everything_coor_x, everything_coor_y, all_velo_x, all_velo_y, lambda] 
         everything_coor_y(:,step) = mod(new_coor(:,2), box_length);
         all_velo_x(:,step) = new_velo(:,1);
         all_velo_y(:,step) = new_velo(:,2);
+        cfx(:,(step-1)) = cf_tot(:,1);
+        cfy(:,(step-1)) = cf_tot(:,2);
         %plot_agents(agent_coor, sigma, box_length, force_init, 1)
         % Plot things -----------------------
 %         plot_coor = [everything_coor_x(:,step) everything_coor_y(:,step)];
