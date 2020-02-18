@@ -1,7 +1,7 @@
-%%
+%% Single Particle Simulations and Visualizations
 % parameters, number of agents, trajectories, etc.
-n_agent = [101];       %number of agents
-n_vsteps = [100];      %number of virtual steps
+n_agent = [1];       %number of agents
+n_vsteps = [100000];      %number of virtual steps
 n_steps = 1000;       %number of real steps
 n_traj = 360;        %number of trajectories
 sigma = 1;          %diameter
@@ -10,8 +10,8 @@ box_length = 80*sigma;    %area explored
 h = 0.01; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
-friction = 1;     %gamma
-temperature = 10;  %temperature
+friction = 0.2;     %gamma
+temperature = 0.05;  %temperature
 
 D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
@@ -30,17 +30,17 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [0];    % energy intake from the environment
-food_radius = 1e20;
-food_center = [80*sigma*0.5 80*sigma*0.5];
+q0 = [10.0];    % energy intake from the environment
+food_radius = 1;
+food_center = [(80*sigma*0.5 +1) (80*sigma*0.5 +1)];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
 d2 = 1.0;   % conversion rate of internal-to-kinetic energy
-c = 1.0;    % dissipation of internal energy
+c = 0.01;    % dissipation of internal energy
 
 
 
 % Potential field
-a = 0;
+a = 2;
 U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
@@ -58,33 +58,9 @@ disp("Filling fraction is " + phi)
 % 
 % 
 % agent_coor = initialize_agents(n_agent(k), sigma, box_length);
-agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
+agent_coor = [box_length/2, box_length/2];
+agent_velo = [0 0];%zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
 % 
-% % To start from a previous step
-% % agent_coor = [all_x(:,1000) all_y(: , 1000)];
-% % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
-% 
-% % To start with agent 1 in a box of other agents
-% agent_coor = [ [box_length/2; ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
-%     ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
-%     [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
-%     [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-%     [box_length/2 ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
-%     [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
-%     ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
-%     ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
-%     
-% % To start with agent 1 in a box of other agents but not centered
-% For synthetic ones
-            synthetic = [2:n_agent];
-            agent_coor = [ [(box_length/2-11*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
-            ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-            [(box_length/2-11*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
-            ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
-            ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
 
 
 force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
@@ -94,41 +70,55 @@ q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_
 
 %% ----------- To visualize one virtual trajectory of one agent -----------
 
-% [my_traj_coor, my_traj_velo, bound, traj_init] = virtual_traj(agent_coor, agent_velo, 1, ...
-%     n_vsteps(l), sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
-%     
-% 
-% fig = figure(1);
-% plot_agents(agent_coor, sigma, box_length, force_init, 1)
-% plot_trajectory(bound, box_length, rand(1,3))
+[my_traj_coor, my_traj_velo, bound, traj_init, traj_e] = virtual_traj(agent_coor, agent_velo, 1, ...
+    n_vsteps(l), sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
+    
+
+fig = figure(1);
+
+plot_agents(agent_coor, sigma, box_length, force_init, 1)
+plot_trajectory(bound, box_length, rand(1,3))
+circle(food_center, food_radius)
+% title('Simple Brownian Motion')
+xlabel('x')
+ylabel('y')
+xlim([35, 45]);
+ylim([35, 45])
+    
+fig_file = strrep(char(string(['Figures/sp_sim_stoch_food_source_h' , num2str(h) ,  '_g' , ...
+    num2str(friction) , 'char_temp' , num2str(temperature) , '_vsteps' , num2str(n_vsteps(l)) ,'_a' , ...
+    num2str(a) , '_d2' , num2str(d2) , '_c' , num2str(c) , '_q0' , num2str(q0(iq))])), '.', '');
+
+% set(gcf, 'renderer','Painters')
+% saveas(gcf, fig_file, 'epsc')
 
 %% ----------- To visualize all virtual trajectories of one agent ---------
 % %------------------- and plot causal entropic force ----------------------
-fig = figure(1);
-plot_agents(agent_coor, sigma, box_length, force_init, 1)
-
-e_cef = [0 0];
-for loopa = 1:1
-gyrations = zeros(n_traj,1);
-traj_init=zeros(n_traj,2);
-cef = [0 0];
-for tr = 1:n_traj
-   [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
-     n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
-    plot_trajectory(bound, box_length, rand(1,3))
-    gyrations(tr) = calc_gyration(my_virt_traj);
-end
-mean_gyr = mean(gyrations);
-for j=1:n_traj
-    norm_gyr = log(gyrations(j)/mean_gyr);
-    cef = cef + norm_gyr*[traj_init(j,1) traj_init(j,2)];
-end
-cef = cef/n_traj;
-e_cef = e_cef + cef;
-hold on
-quiver(agent_coor(1,1), agent_coor(1,2), cef(1)*n_traj, cef(2)*n_traj*1, 'AutoScale','off');
-end
-quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj/10, e_cef(2)*n_traj/10, 'AutoScale','off', 'LineWidth',4);
+% fig = figure(1);
+% plot_agents(agent_coor, sigma, box_length, force_init, 1)
+% 
+% e_cef = [0 0];
+% for loopa = 1:1
+%     gyrations = zeros(n_traj,1);
+%     traj_init=zeros(n_traj,2);
+%     cef = [0 0];
+%     for tr = 1:n_traj
+%        [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
+%          n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
+%         plot_trajectory(bound, box_length, rand(1,3))
+%         gyrations(tr) = calc_gyration(my_virt_traj);
+%     end
+%     mean_gyr = mean(gyrations);
+%     for j=1:n_traj
+%         norm_gyr = log(gyrations(j)/mean_gyr);
+%         cef = cef + norm_gyr*[traj_init(j,1) traj_init(j,2)];
+%     end
+%     cef = cef/n_traj;
+%     e_cef = e_cef + cef;
+%     hold on
+%     quiver(agent_coor(1,1), agent_coor(1,2), cef(1)*n_traj, cef(2)*n_traj*1, 'AutoScale','off');
+% end
+% quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj/10, e_cef(2)*n_traj/10, 'AutoScale','off', 'LineWidth',4);
 
 
 
@@ -284,7 +274,7 @@ end
 function force_rep = repulsion(agent_coordinates, diameter, area,...
     strength, type)
     if type == "soft"
-        force_rep = zeros(length(agent_coordinates), 2);
+        force_rep = zeros(size(agent_coordinates,1), 2);
         for i = 1:size(agent_coordinates, 1)
             for j = 1:size(agent_coordinates, 1)
                 Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
@@ -308,7 +298,7 @@ function force_rep = repulsion(agent_coordinates, diameter, area,...
             end
         end
     elseif type == "hard"
-        force_rep = zeros(length(agent_coordinates), 2);
+        force_rep = zeros(size(agent_coordinates,1), 2);
         for i = 1:size(agent_coordinates,1)
             for j = 1:size(agent_coordinates,1)
                 Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
@@ -332,7 +322,7 @@ function force_rep = repulsion(agent_coordinates, diameter, area,...
             end
         end
     elseif type == "exponential"
-        force_rep = zeros(length(agent_coordinates), 2);
+        force_rep = zeros(size(agent_coordinates,1), 2);
         for i = 1:size(agent_coordinates,1)
             for j = 1:size(agent_coordinates,1)
                 Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
@@ -452,7 +442,7 @@ end
 % i is the agent we are investigating
 
 function [traj_coor, traj_velo, ...
-    bound_coor, traj_init_force] = virtual_traj(agent_coor, agent_velo, i, ...
+    bound_coor, traj_init_force, traj_e] = virtual_traj(agent_coor, agent_velo, agent, ...
     n_virt_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q)
     
     % First element is the real one, so updating number of virtual time
@@ -464,6 +454,8 @@ function [traj_coor, traj_velo, ...
     bound_coor = zeros(n_virt_steps,2);
     traj_velo = zeros(n_virt_steps,2);
     grid_coor = agent_coor;
+     
+    traj_e = zeros(n_virt_steps,1);
     
     % Generate random numbers for noise for every step
     dw = sqrt(2*D*h) * bivariate_normal(n_virt_steps);
@@ -472,47 +464,69 @@ function [traj_coor, traj_velo, ...
     
     
     % starting the iteration for the first virtual timestep
-    traj_coor(1,:) = agent_coor(i,:);
-    traj_velo(1,:) = agent_velo(i,:);
-    bound_coor(1,:) = agent_coor(i,:);
-    
-%     f_rep = repulsion_agent(agent_coor, i, diameter, area, strength, repul_type)
-%     f_langevin = -friction * traj_velo(1,:) + dw(1,:) + ...
-%         q(traj_coor(1), traj_coor(2)) * d2 * traj_velo(1,:)/(c+d2*norm(traj_velo(1,:))^2)
-%     f_tot = f_langevin + f_rep
-%     traj_coor(2,:) = traj_coor(1,:) + traj_velo(1,:)* h + ...
-%         0.5 * f_tot * (h^2) ;
-%     bound_coor(2,:) = mod(traj_coor(2,:), area);
-% %     traj_velo(2,:) = traj_velo(1,:) + f_tot* h ;
-% %     db = traj_velo(1,:) + f_tot* dt ;
-%     traj_velo(2,:) = (traj_coor(2,:) - traj_coor(1,:))/h;
-% %     disp(traj_velo(2,:)-db)
-%     
-%     % Update the grid;
-%     grid_coor(i,:) = mod(traj_coor(2,:), area);
+    traj_coor(1,:) = agent_coor(agent,:);
+    traj_velo(1,:) = agent_velo(agent,:);
+    bound_coor(1,:) = agent_coor(agent,:);
     
 % Euler-Murayama method
-    for j=2:n_virt_steps
-        % find repulsion force for step
-        f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
+%     for j=2:n_virt_steps
+%         % find repulsion force for step
+%         f_rep = repulsion_agent(grid_coor, agent, diameter, area, strength, repul_type);
+%         f_det = f_rep -friction * traj_velo(j-1,:) + ...
+%         q(traj_coor(1), traj_coor(2)) * d2 * traj_velo(j-1,:)/(c+d2*norm(traj_velo(j-1,:))^2);
+% %         f2 = -friction *db + virt_steps_noise(j,:);
+% %         disp(f_langevin-f2)
+% %         pause(1)
+%         % update velocity and position of virtual timestep
+%         traj_velo(j,:) = traj_velo(j-1,:) + h*f_det + ...
+%             dw(j,:);
+%         
+%         traj_coor(j,:) = traj_coor(j-1,:) + h*traj_velo(j-1,:);
+% %         traj_velo(j,:) = traj_velo(j-1,:) + f_tot * h;
+% %         disp((abs(traj_velo(j,:) - (traj_velo(j-1,:) + f_tot * dt))>1e-9))
+%         
+%         % update the grid:
+%         bound_coor(j,:) = mod(traj_coor(j,:), area);
+%         grid_coor(agent,:) = mod(traj_coor(j,:), area);
+%     end
+%    
+
+% Runge - Kutta for active particles
+    for j = 2:n_virt_steps
+        f_rep = repulsion_agent(grid_coor, agent , diameter, area, strength, repul_type);
         f_det = f_rep -friction * traj_velo(j-1,:) + ...
-        q(traj_coor(1), traj_coor(2)) * d2 * traj_velo(j-1,:)/(c+d2*norm(traj_velo(j-1,:))^2);
-%         f2 = -friction *db + virt_steps_noise(j,:);
-%         disp(f_langevin-f2)
-%         pause(1)
-        % update velocity and position of virtual timestep
-        traj_velo(j,:) = traj_velo(j-1,:) + h*f_det + ...
-            dw(j,:);
+            traj_e(j-1) * d2 * traj_velo(j-1,:) - 0.5*a*(traj_coor(j-1,:)-area/2);
+        e_det = q(traj_coor(j-1, 1), traj_coor(j-1, 2)) - c* traj_e(j-1) - d2* traj_e(j-1)*(norm(traj_velo(j-1,:))^2);
+        drift = [ traj_velo(j-1,:)' ;  f_det(:) ; e_det];
         
-        traj_coor(j,:) = traj_coor(j-1,:) + h*traj_velo(j-1,:);
-%         traj_velo(j,:) = traj_velo(j-1,:) + f_tot * h;
-%         disp((abs(traj_velo(j,:) - (traj_velo(j-1,:) + f_tot * dt))>1e-9))
+        sk = binornd(1,0.5);
+        if sk == 0
+            sk = -1;
+        end
+        volatility = [ 0; 0; dw(j-1,1)- sk*sqrt(h); dw(j-1,2)-sk*sqrt(h) ; 0;];
+%         dwk = randn*sqrt(2*D*h);
+        k1 = h*drift + volatility ;
         
-        % update the grid:
+        %update
+        grid_coor(agent, :) = mod(traj_coor(j-1,:)+ k1(1:2)', area) ;
+        
+        f_rep = repulsion_agent(grid_coor, agent , diameter, area, strength, repul_type);
+        f_det = f_rep -friction * (traj_velo(j-1,:) + k1(3:4)') + ...
+            (traj_e(j-1)+k1(5)) * d2 * (traj_velo(j-1,:) + k1(3:4)') - 0.5*a*(traj_coor(j-1,:) + k1(1:2)' - area/2);
+        e_det = q(traj_coor(j-1, 1)+k1(1), traj_coor(j-1, 2)+k1(2)) - c* (traj_e(j-1)+k1(5)) - d2* (traj_e(j-1)+k1(5))*(norm((traj_velo(j-1,:) + k1(3:4)'))^2);
+        drift = [ traj_velo(j-1,:)' ;  f_det(:) ; e_det];
+        volatility = [ 0; 0; dw(j-1,1)+ sk*sqrt(h); dw(j-1,2)+sk*sqrt(h) ; 0;];
+        k2 = h*drift + volatility;
+        
+        traj_coor(j,:) = traj_coor(j-1,:) + 0.5*( k1(1:2)' + k2(1:2)');
+        traj_velo(j,:) = traj_velo(j-1,:) + 0.5*( k1(3:4)' + k2(3:4)');
+        traj_e(j,:) = traj_e(j-1,:) + 0.5*( k1(5) + k2(5));
+        
+        
+        %update the grid:
         bound_coor(j,:) = mod(traj_coor(j,:), area);
-        grid_coor(i,:) = mod(traj_coor(j,:), area);
+        grid_coor(agent,:) = mod(traj_coor(j,:), area);
     end
-    
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
@@ -766,7 +780,7 @@ end
 % -------------------------------------------------------------------------
 function plot_agents(agent_coordinates, diameter, box_length, forces, scl)
     theta = 0:0.01:2*pi;
-    for k = 1: length(agent_coordinates)
+    for k = 1: size(agent_coordinates,1)
         xCenter = agent_coordinates(k,1);
         yCenter = agent_coordinates(k,2);
         thisX = diameter * 0.5 * cos(theta) + xCenter;
