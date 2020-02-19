@@ -30,12 +30,12 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [10.0];    % energy intake from the environment
-food_radius = 1;
+q0 = [1];    % energy intake from the environment
+food_radius = 100000;
 food_center = [(80*sigma*0.5 +1) (80*sigma*0.5 +1)];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
 d2 = 1.0;   % conversion rate of internal-to-kinetic energy
-c = 0.01;    % dissipation of internal energy
+c = 0.1;    % dissipation of internal energy
 
 
 
