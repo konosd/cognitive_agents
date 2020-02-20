@@ -118,11 +118,11 @@ for iq = 1:length(q0)
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1)).^2 + (x2-food_center(2)).^2) < food_radius^2 );
 
-            dir_name = strcat("maksym_recreate" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            dir_name = strcat("em_maksym_recreate" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
             mkdir(dir_name)
             
             
-            [x, y, u, v, e] = abp_constant_de_solver(n_agent, agent_coor, ...
+            [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
                     n_steps, sigma, box_length, repul_strength, friction, D, h, repul_type, d2, a, c, q);
             
 %             plot_agents(agent_coor, sigma, box_length, force_init, 1.0)
@@ -455,7 +455,7 @@ function [x, y, u, v, e] = abp_simple_solver(n_agent, agent_coor, ...
         u(:,j) = u(:,j-1) + 0.5*( k1(:,3) + k2(:,3));
         v(:,j) = v(:,j-1) + 0.5*( k1(:,4) + k2(:,4));
         e(:,j) = e(:,j-1) + 0.5*( k1(:,5) + k2(:,5));
-        disp(strcat("Step " + j + " done."))
+%         disp(strcat("Step " + j + " done."))
     end
 end
 % -------------------------------------------------------------------------
@@ -537,10 +537,74 @@ function [x, y, u, v, e] = abp_constant_de_solver(n_agent, agent_coor, ...
         v(:,j) = v(:,j-1) + 0.5*( k1(:,4) + k2(:,4));
         e(:,j) = q(x(:,j), y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));%    e(:,j-1) + 0.5*( k1(:,5) + k2(:,5));
 %         disp(strcat("Step " + j + " done."))
+
+        
     end
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
+
+
+
+%% ------------------------------------------------------------------------
+% -------------------- E.M. Integrator Cnst de/dt Solver ------------------
+% -------------------------------------------------------------------------
+% 
+
+function [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
+    n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q)
+   
+    
+    % Initialize vectors of path and velocities
+    x = zeros(n_agent, n_steps);
+    y = zeros(n_agent, n_steps);
+    u = zeros(n_agent, n_steps);
+    v = zeros(n_agent, n_steps);
+    e = zeros(n_agent, n_steps);
+    
+    x(:,1) = agent_coor(:,1);
+    y(:,1) = agent_coor(:,2);
+    
+    grid_coor = agent_coor;
+    
+
+    
+        % Euler-Murayama method
+    for j=2:n_steps
+        
+        % Generate random numbers for noise for every step
+        dw = sqrt(2*D*h) * bivariate_normal(n_agent);
+    
+        % find repulsion force for step
+        f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
+
+        f_det_x = f_rep(:,1) -friction * u(:,j-1) + ...
+            d2 * e(:,j-1).* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
+        f_det_y = f_rep(:,2) -friction * v(:,j-1) + ...
+            d2 * e(:,j-1).* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
+        
+        %         f2 = -friction *db + virt_steps_noise(j,:);
+        %         disp(f_langevin-f2)
+        %         pause(1)
+        % update velocity and position of virtual timestep
+        
+        x(:,j) = mod( (x(:,j-1) + h*u(:,j-1)), area);
+        y(:,j) = mod( (y(:,j-1) + h*v(:,j-1)), area);
+        u(:,j) = u(:,j-1) + h*f_det_x + dw(:,1);
+        v(:,j) = v(:,j-1) + h*f_det_y + dw(:,2);
+        e(:,j) = q(x(:,j),y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));
+        
+        % Update grid
+        grid_coor = [x(:,j) y(:,j)];
+    end
+
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+
+
+
 
 
 
