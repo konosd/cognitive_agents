@@ -1,6 +1,6 @@
 %% Single Particle Simulations and Visualizations
 % parameters, number of agents, trajectories, etc.
-n_agent = [250];       %number of agents
+n_agent = [50];       %number of agents
 n_steps = 2e5;       %number of real steps
 n_vsteps = 100;
 n_traj = 1;        %number of trajectories
@@ -10,7 +10,7 @@ box_length = 80*sigma;    %area explored
 h = 0.005; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
-friction = 1/0.45;     %gamma
+friction = 0.45;     %gamma
 temperature = 0.3;  %temperature
 
 D = friction*temperature; %0.01; 
@@ -98,7 +98,9 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 %% ---- To visualize everything, solve the full problem, chunk below ------
 % % % 
-parfor iq = 1:length(q0)
+
+
+for iq = 1:length(q0)
     for l=1:length(n_vsteps)
         for k=1:length(n_agent)
 
@@ -413,7 +415,7 @@ function [x, y, u, v, e] = abp_simple_solver(n_agent, agent_coor, ...
         f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
   
         f_det_x = f_rep(:,1) -friction * u(:,j-1) + ...
-            d2 * e(j-1) .* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
+            d2 * e(:,j-1) .* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
         f_det_y = f_rep(:,2) -friction * v(:,j-1) + ...
             d2 * e(:,j-1) .* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
 
@@ -494,7 +496,7 @@ function [x, y, u, v, e] = abp_constant_de_solver(n_agent, agent_coor, ...
         f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
   
         f_det_x = f_rep(:,1) -friction * u(:,j-1) + ...
-            d2 * e(j-1) .* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
+            d2 * e(:,j-1) .* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
         f_det_y = f_rep(:,2) -friction * v(:,j-1) + ...
             d2 * e(:,j-1) .* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
 
@@ -533,8 +535,8 @@ function [x, y, u, v, e] = abp_constant_de_solver(n_agent, agent_coor, ...
         y(:,j) = mod(y(:,j-1) + 0.5*( k1(:,2) + k2(:,2)), area);
         u(:,j) = u(:,j-1) + 0.5*( k1(:,3) + k2(:,3));
         v(:,j) = v(:,j-1) + 0.5*( k1(:,4) + k2(:,4));
-        e(:,j) = q(x(:,j-1), y(:,j-1))./(c+d2*(sqrt(v(:,j-1).^2 + u(:,j-1).^2).^2));%    e(:,j-1) + 0.5*( k1(:,5) + k2(:,5));
-        disp(strcat("Step " + j + " done."))
+        e(:,j) = q(x(:,j), y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));%    e(:,j-1) + 0.5*( k1(:,5) + k2(:,5));
+%         disp(strcat("Step " + j + " done."))
     end
 end
 % -------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 %% Single Particle Simulations and Visualizations
 % parameters, number of agents, trajectories, etc.
 n_agent = [50];       %number of agents
-n_steps = 1e5;       %number of real steps
+n_steps = 2e5;       %number of real steps
 n_vsteps = [100];
 n_traj = 1;        %number of trajectories
 sigma = 1;          %diameter
@@ -75,22 +75,42 @@ if false
                 e(:,i) = coordat(((i-1)*n_agent_j+1):(i*n_agent_j) , 5);
 
             end
-            v_dens(j,:) = [ mean( reshape(v(:,10000:20000),1,[])' < vel_bins)];
+            v_dens(j,:) = [ mean( reshape(v(:,5000:20000),1,[])' < vel_bins)];
             v_dens(j,:) = [v_dens(j,1) (v_dens(j,2:length(vel_bins)) - v_dens(j,(1:(length(vel_bins)-1))))];
-            u_dens(j,:) = [ mean( reshape(u(:,25000:50000),1,[])' < vel_bins)];
+            u_dens(j,:) = [ mean( reshape(u(:,5000:20000),1,[])' < vel_bins)];
             u_dens(j,:) = [u_dens(j,1) (u_dens(j,2:length(vel_bins)) - u_dens(j,(1:(length(vel_bins)-1))))];
 
     end
 end
 %% ------------------- Plot histograms of velocity distribution------------
 
-% % Make velocity density distribution
+
+% % Make u velocity density distribution
+vel_markers = ["-o", "-+", "-*", "-^", "-v", "-x"];
 for iq = 1:length(q0)
-    plot(vel_bins, v_dens(iq,:), 'color', rand(1,3))
+    plot(vel_bins, vel_markers(iq), 'color', rand(1,3))
     hold on
 end
-legend(string(q0))
+legend(strcat("q0 ="+ q0))
+xlabel('v Velocity')
+ylabel('p(v)')
+grid on
     
+% % % Make v velocity density distribution
+% for iq = 1:length(q0)
+%     plot(vel_bins, u_dens(iq,:), 'color', rand(1,3))
+%     hold on
+% end
+% legend(strcat("q0 ="+ q0))
+% xlabel('u Velocity')
+%     
+% for iq = 1:length(q0)
+%     plot(vel_bins, u_dens(iq,:), 'color', rand(1,3))
+%     hold on
+% end
+% legend(strcat("q0 ="+ q0))
+% xlabel('u Velocity')
+%     
 
 
 
