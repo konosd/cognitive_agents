@@ -47,8 +47,8 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
 %% -----------------Import files ------------------------------------------
-if false
-    my_files = dir('maksym_recreate50_phi0.0061359_vsteps100_ntraj1_steps200000_q*');
+if true
+    my_files = dir('em_wforce50_phi0.0061359_vsteps100_ntraj1_steps200000_q*');
     filenames = strings(length(my_files),1);
 
     vel_bins = [-7:0.05:7];
@@ -88,29 +88,14 @@ end
 % % Make u velocity density distribution
 vel_markers = ["-o", "-+", "-*", "-^", "-v", "-x"];
 for iq = 1:length(q0)
-    plot(vel_bins, vel_markers(iq), 'color', rand(1,3))
+    plot(vel_bins, u_dens(iq,:), vel_markers(iq), 'color', rand(1,3))
     hold on
 end
 legend(strcat("q0 ="+ q0))
-xlabel('v Velocity')
-ylabel('p(v)')
+xlabel('u Velocity')
+ylabel('p(u)')
 grid on
     
-% % % Make v velocity density distribution
-% for iq = 1:length(q0)
-%     plot(vel_bins, u_dens(iq,:), 'color', rand(1,3))
-%     hold on
-% end
-% legend(strcat("q0 ="+ q0))
-% xlabel('u Velocity')
-%     
-% for iq = 1:length(q0)
-%     plot(vel_bins, u_dens(iq,:), 'color', rand(1,3))
-%     hold on
-% end
-% legend(strcat("q0 ="+ q0))
-% xlabel('u Velocity')
-%     
 
 
 

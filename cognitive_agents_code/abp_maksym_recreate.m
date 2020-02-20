@@ -16,7 +16,7 @@ temperature = 0.3;  %temperature
 D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
 
-repul_strength = 0;%20.0;
+repul_strength = 1;%20.0;
 repul_exp = 10.0;
 repul_type = "soft";
 v_repul_type = "soft";
@@ -118,7 +118,7 @@ for iq = 1:length(q0)
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1)).^2 + (x2-food_center(2)).^2) < food_radius^2 );
 
-            dir_name = strcat("em_maksym_recreate" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            dir_name = strcat("em_wforce" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
             mkdir(dir_name)
             
             
@@ -383,6 +383,44 @@ end
 
 
 %% ------------------------------------------------------------------------
+% -------------------- Dissipative Force ----------------------------------
+% -------------------------------------------------------------------------
+function f_dis = dissipative( agent_coordinates, agent_velocities, ...
+    diameter, area)
+    
+    dis_strength = 1.5;
+    repulsion_radius = diameter;
+    cutoff_radius = area;
+
+    xij = agent_coordinates(:,1) - agent_coordinates(:,1)' ;
+    yij = agent_coordinates(:,2) - agent_coordinates(:,2)' ;
+    uij = agent_velocities(:,1) - agent_velocities(:,1)' ;
+    vij = agent_velocities(:,2) - agent_velocities(:,2)' ;
+    
+    rij = sqrt( xij.^2 + yij.^2);
+    omegaij = (1 - rij / cutoff_radius).^2;
+    omegaij(rij > repulsion_radius) = 0;
+    
+    magnitude = -dis_strength * omegaij * ( xij.*uij + yij.*vij) ./rij;
+    
+    f_dis_x = magnitude .* xij ./ rij;
+    f_dis_y = magnitude .* yij ./ rij;
+    f_dis_x(isnan(f_dis_x)) = 0;
+    f_dis_y(isnan(f_dis_y)) = 0;
+    
+    f_dis_x = sum(f_dis_x,2);
+    f_dis_y = sum(f_dis_y,2);
+    
+    f_dis = [f_dis_x f_dis_x];
+
+
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
+
+
+
+%% ------------------------------------------------------------------------
 % -------------------- Solver ---------------------------------------------
 % -------------------------------------------------------------------------
 % 
@@ -577,10 +615,12 @@ function [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
     
         % find repulsion force for step
         f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
+        f_dis = dissipative( grid_coor, [u(:,j-1) v(:,j-1)], diameter, area);
+        %
 
-        f_det_x = f_rep(:,1) -friction * u(:,j-1) + ...
+        f_det_x = f_rep(:,1) + f_dis(:,1) -friction * u(:,j-1) + ...
             d2 * e(:,j-1).* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
-        f_det_y = f_rep(:,2) -friction * v(:,j-1) + ...
+        f_det_y = f_rep(:,2) + f_dis(:,2) -friction * v(:,j-1) + ...
             d2 * e(:,j-1).* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
         
         %         f2 = -friction *db + virt_steps_noise(j,:);

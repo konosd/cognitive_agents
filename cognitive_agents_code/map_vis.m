@@ -11,7 +11,7 @@ type = repul_type;
 save_video=1;
 save_figure=0;   
 
-scale=100;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
+scale=1;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
 
 nvt=n_traj; %No of virtual trajectories 
 box = sigma * 80;
@@ -20,7 +20,7 @@ Br = repul_exp;
 
 %% -------------------     Set up visualization     -----------------------
 
-my_files = dir('synthetic_agent_new101_phi0.012395_vsteps100_ntraj360_steps2000_q*');
+my_files = dir('*m_wforce50_phi0.0061359_vsteps100_ntraj1_steps200000_q5');
 filenames = strings(length(my_files),1);
 for i=1:length(my_files)
    filenames(i) = my_files(i).name;
@@ -31,7 +31,7 @@ end
 for j=1:size(filenames)
     % Import data
     dir_in_loop = filenames(j);
-    np = np_all( floor((j-1)/length(tau)) + 1);
+    np = 50;%np_all( floor((j-1)/length(tau)) + 1);
     coord=importdata(strcat(dir_in_loop + '/coor.dat'));
 %     cog_force = importdata(strcat(dir_in_loop + '/cf.dat'));
     % Setup Video Writer
