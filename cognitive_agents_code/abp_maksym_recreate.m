@@ -1,25 +1,25 @@
 %% Single Particle Simulations and Visualizations
 % parameters, number of agents, trajectories, etc.
-n_agent = [2];       %number of agents
-n_steps = 100000;       %number of real steps
+n_agent = [250];       %number of agents
+n_steps = 2e5;       %number of real steps
 n_vsteps = 100;
 n_traj = 1;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.01; %timestep = 0.001;     % dt timestep
+h = 0.005; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
-friction = 0.2;     %gamma
-temperature = 0.05;  %temperature
+friction = 1/0.45;     %gamma
+temperature = 0.3;  %temperature
 
 D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
 
-repul_strength = 20.0;
+repul_strength = 0;%20.0;
 repul_exp = 10.0;
-repul_type = "exponential";
-v_repul_type = "exponential";
+repul_type = "soft";
+v_repul_type = "soft";
 pi = 4 * atan(1);
 
 % Add synthetic agents - this is where you define whether an agent will be
@@ -30,17 +30,17 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [1];    % energy intake from the environment
+q0 = [0 0.5 0.8 1.5 10 5];    % energy intake from the environment
 food_radius = 1e6;
 food_center = [(box_length*sigma*0.5) (box_length*sigma*0.5)];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
-d2 = 1.0;   % conversion rate of internal-to-kinetic energy
-c = 0.1;    % dissipation of internal energy
+d2 = 3.0;   % conversion rate of internal-to-kinetic energy
+c = 1.2;    % dissipation of internal energy
 
 
 
 % Potential field
-a = 0.02;
+a = 0.0;
 U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
@@ -98,7 +98,7 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 %% ---- To visualize everything, solve the full problem, chunk below ------
 % % % 
-for iq = 1:length(q0)
+parfor iq = 1:length(q0)
     for l=1:length(n_vsteps)
         for k=1:length(n_agent)
 
@@ -112,7 +112,6 @@ for iq = 1:length(q0)
             agent_coor = initialize_agents(n_agent(k), sigma, box_length);
             agent_velo = zeros(n_agent(k),2);
 
-            agent_coor = [40 40; 10 10];
             force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1)).^2 + (x2-food_center(2)).^2) < food_radius^2 );
@@ -121,29 +120,24 @@ for iq = 1:length(q0)
             mkdir(dir_name)
             
             
-            [x, y, u, v, e] = abp_simple_solver(n_agent, agent_coor, ...
+            [x, y, u, v, e] = abp_constant_de_solver(n_agent, agent_coor, ...
                     n_steps, sigma, box_length, repul_strength, friction, D, h, repul_type, d2, a, c, q);
             
-            plot_agents(agent_coor, sigma, box_length, force_init, 1.0)
-            hold on
-            for paint_traj = 1:size(agent_coor,1)
-                plot_trajectory([x(paint_traj,:)' y(paint_traj,:)'] , box_length, rand(1,3))
-            end
-                
-%             incr = 4;
-%             coordat = zeros(n_agent(k) * n_steps / incr, 4);
-%             cfdat = zeros(n_agent(k) * n_steps / incr, 2);
-%             for i=1:n_steps/4
-%                 coordat(((i-1)*n_agent(k)+1):(i*n_agent(k)) , :) = [all_x(:,i) all_y(:,i) ...
-%                     vel_x(:,i) vel_y(:,i)];
-%                 cfdat(((i-1)*n_agent(k)+1):(i*n_agent(k)), :) = [all_cfx(:,i) all_cfy(:,i)];
+%             plot_agents(agent_coor, sigma, box_length, force_init, 1.0)
+%             hold on
+%             for paint_traj = 1:size(agent_coor,1)
+%                 plot_trajectory([x(paint_traj,:)' y(paint_traj,:)'] , box_length, rand(1,3))
 %             end
-% 
-%             save(strcat(dir_name, "/coor.dat"), 'coordat', "-ascii")
-%             
-%             save(strcat(dir_name, "/cf.dat"), 'cfdat', "-ascii")
-% 
-%             save(strcat(dir_name, "/lambdas.dat"), 'lambda', "-ascii")
+                
+            incr = 10;
+            coordat = zeros(n_agent(k) * n_steps / incr, 5);
+            for i=1:n_steps/incr
+                coordat(((i-1)*n_agent(k)+1):(i*n_agent(k)) , :) = [x(:,i) y(:,i) ...
+                    u(:,i) v(:,i) e(:,i)];
+            end
+
+            save(strcat(dir_name, "/coor.dat"), 'coordat', "-ascii")
+            
 
         end
     end
@@ -422,6 +416,7 @@ function [x, y, u, v, e] = abp_simple_solver(n_agent, agent_coor, ...
             d2 * e(j-1) .* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
         f_det_y = f_rep(:,2) -friction * v(:,j-1) + ...
             d2 * e(:,j-1) .* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
+
         
         e_det = q(x(:,j-1), y(:,j-1)) - c* e(:,j-1) - d2* e(:,j-1).*(sqrt(v(:,j-1).^2 + u(:,j-1).^2).^2);
         drift = [ u(:,j-1)  v(:,j-1) f_det_x f_det_y e_det];
@@ -443,6 +438,9 @@ function [x, y, u, v, e] = abp_simple_solver(n_agent, agent_coor, ...
         f_det_y = f_rep(:,2) -friction * (v(:,j-1) + k1(:,4)) + ...
             d2 *(e(:,j-1)+k1(:,5)) .*(v(:,j-1) + k1(:,4)) - 0.5*a*( (y(:,j-1)+k1(:,2))-area/2);
         
+        
+        
+        
         e_det = q( (x(:,j-1)+k1(:,1)), (y(:,j-1)+k1(:,2))) - c* (e(:,j-1)+k1(:,5)) -...
             d2* (e(:,j-1)+k1(:,5)).*(sqrt((u(:,j-1) + k1(:,3)).^2 + (v(:,j-1)+k1(:,4)).^2).^2);
         
@@ -455,11 +453,92 @@ function [x, y, u, v, e] = abp_simple_solver(n_agent, agent_coor, ...
         u(:,j) = u(:,j-1) + 0.5*( k1(:,3) + k2(:,3));
         v(:,j) = v(:,j-1) + 0.5*( k1(:,4) + k2(:,4));
         e(:,j) = e(:,j-1) + 0.5*( k1(:,5) + k2(:,5));
+        disp(strcat("Step " + j + " done."))
     end
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
 
+
+
+%% ------------------------------------------------------------------------
+% -------------------- Constant Derivative of Energy depot Solver ---------
+% -------------------------------------------------------------------------
+% 
+
+function [x, y, u, v, e] = abp_constant_de_solver(n_agent, agent_coor, ...
+    n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q)
+   
+    
+    % Initialize vectors of path and velocities
+    x = zeros(n_agent, n_steps);
+    y = zeros(n_agent, n_steps);
+    u = zeros(n_agent, n_steps);
+    v = zeros(n_agent, n_steps);
+    e = zeros(n_agent, n_steps);
+    
+    x(:,1) = agent_coor(:,1);
+    y(:,1) = agent_coor(:,2);
+    
+    grid_coor = agent_coor;
+    
+    
+    % Generate random numbers for noise for every step
+    dw = sqrt(2*D*h) * bivariate_normal(n_steps*n_agent);
+    % Save the first force to compute gyration later
+    
+    
+
+% Runge - Kutta for active particles
+    for j = 2:n_steps
+        f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
+  
+        f_det_x = f_rep(:,1) -friction * u(:,j-1) + ...
+            d2 * e(j-1) .* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
+        f_det_y = f_rep(:,2) -friction * v(:,j-1) + ...
+            d2 * e(:,j-1) .* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
+
+        
+        e_det = zeros(n_agent,1) ;%q(x(:,j-1), y(:,j-1)) - c* e(:,j-1) - d2* e(:,j-1).*(sqrt(v(:,j-1).^2 + u(:,j-1).^2).^2);
+        drift = [ u(:,j-1)  v(:,j-1) f_det_x f_det_y e_det];
+        
+        sk = binornd(1,0.5);
+        if sk == 0
+            sk = -1;
+        end
+        volatility = [ zeros(n_agent,1)  zeros(n_agent,1) (sqrt(2*D*h) *bivariate_normal(n_agent)- sk*sqrt(h)) zeros(n_agent,1)];
+        k1 = h*drift + volatility ;
+        
+        %update
+        grid_coor = mod([x(:,j-1) y(:,j-1)], area) ;
+        
+        f_rep = repulsion(grid_coor,  diameter, area, strength, repul_type);
+        
+        f_det_x = f_rep(:,1) -friction * (u(:,j-1) + k1(:,3)) + ...
+            d2 * (e(:,j-1)+k1(:,5)) .*(u(:,j-1) + k1(:,3)) - 0.5*a*( (x(:,j-1)+k1(:,1))-area/2);
+        f_det_y = f_rep(:,2) -friction * (v(:,j-1) + k1(:,4)) + ...
+            d2 *(e(:,j-1)+k1(:,5)) .*(v(:,j-1) + k1(:,4)) - 0.5*a*( (y(:,j-1)+k1(:,2))-area/2);
+        
+        
+        
+        
+        e_det = zeros(n_agent,1) ;%q( (x(:,j-1)+k1(:,1)), (y(:,j-1)+k1(:,2))) - c* (e(:,j-1)+k1(:,5)) -...
+            %d2* (e(:,j-1)+k1(:,5)).*(sqrt((u(:,j-1) + k1(:,3)).^2 + (v(:,j-1)+k1(:,4)).^2).^2);
+        
+        drift = [ (u(:,j-1) + k1(:,3)) (v(:,j-1) + k1(:,4))  f_det_x  f_det_y  e_det];
+        volatility = [ zeros(n_agent,1)  zeros(n_agent,1) (sqrt(2*D*h) *bivariate_normal(n_agent)+ sk*sqrt(h)) zeros(n_agent,1)];
+        k2 = h*drift + volatility;
+        
+        x(:,j) = mod(x(:,j-1) + 0.5*( k1(:,1) + k2(:,1)), area);
+        y(:,j) = mod(y(:,j-1) + 0.5*( k1(:,2) + k2(:,2)), area);
+        u(:,j) = u(:,j-1) + 0.5*( k1(:,3) + k2(:,3));
+        v(:,j) = v(:,j-1) + 0.5*( k1(:,4) + k2(:,4));
+        e(:,j) = q(x(:,j-1), y(:,j-1))./(c+d2*(sqrt(v(:,j-1).^2 + u(:,j-1).^2).^2));%    e(:,j-1) + 0.5*( k1(:,5) + k2(:,5));
+        disp(strcat("Step " + j + " done."))
+    end
+end
+% -------------------------------------------------------------------------
+% -------------------------------------------------------------------------
 
 
 
