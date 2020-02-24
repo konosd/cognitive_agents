@@ -3,7 +3,7 @@
 %% Get parameters from running the previous script
 
 np_all = [101];       %number of agents
-tau = [100];      %number of virtual steps
+tau = [200];      %number of virtual steps
 
 nst=n_steps;
 type = repul_type;
@@ -11,7 +11,7 @@ type = repul_type;
 save_video=1;
 save_figure=0;   
 
-scale=1;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
+scale=20;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
 
 nvt=n_traj; %No of virtual trajectories 
 box = sigma * 80;
@@ -20,7 +20,7 @@ Br = repul_exp;
 
 %% -------------------     Set up visualization     -----------------------
 
-my_files = dir('synthetic_dotp_*');
+my_files = dir('synthetic_dotp_101_phi0.012395_vsteps200_ntraj360_steps10000_q*');
 filenames = strings(length(my_files),1);
 for i=1:length(my_files)
    filenames(i) = my_files(i).name;

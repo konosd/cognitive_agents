@@ -1,8 +1,8 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = [101];       %number of agents
+n_agent = [400];       %number of agents
 n_vsteps = [200];      %number of virtual steps
-n_steps = 10000;       %number of real steps
+n_steps = 2000;       %number of real steps
 n_traj = 360;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
@@ -176,15 +176,15 @@ for iq = 1:length(q0)
             % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
 
 %             For synthetic ones
-            synthetic = [2:n_agent];
-            agent_coor = [ [(box_length/2-10*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
-            ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-            [(box_length/2-10*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
-            ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
-            ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
+%             synthetic = [2:n_agent];
+%             agent_coor = [ [(box_length/2-10*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
+%             ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
+%             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
+%             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
+%             [(box_length/2-10*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
+%             [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
+%             ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
+%             ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
 
 
 
@@ -192,7 +192,7 @@ for iq = 1:length(q0)
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
 
-            dir_name = strcat("synthetic_dotp_" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            dir_name = strcat("corrected_passive_dotp_" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
             mkdir(dir_name)
 
             [all_x, all_y, vel_x, vel_y, lambda, all_cfx, all_cfy] = cef_solver( agent_coor,...
@@ -597,7 +597,7 @@ function [all_gyrations,traj_init, lambda, traj_mean] = calc_all_gyrations(n_age
     traj_init = zeros(n_agent,n_traj,2);
     lambdas = zeros(1, n_agent);
     traj_mean = zeros(n_agent, n_traj,2);
-    for agent_no = 1:n_agent
+    parfor agent_no = 1:n_agent
         if ~ismember(agent_no, synthetic)
             %disp('Entering agent')
             for tr=1:n_traj
@@ -694,7 +694,7 @@ function [new_coor, new_velo, cog_force] = next_timestep( agent_coor, ...
             new_coor(agent,:) = agent_coor(agent,:);
         end
     end
-    disp(new_coor(1,:))
+%     disp(new_coor(1,:))
 end
 % -------------------------------------------------------------------------
 % -------------------------------------------------------------------------
