@@ -20,7 +20,7 @@ Br = repul_exp;
 
 %% -------------------     Set up visualization     -----------------------
 
-my_files = dir('*m_wforce50_phi0.0061359_vsteps100_ntraj1_steps200000_q5');
+my_files = dir('synthetic_dotp_*');
 filenames = strings(length(my_files),1);
 for i=1:length(my_files)
    filenames(i) = my_files(i).name;
@@ -31,7 +31,7 @@ end
 for j=1:size(filenames)
     % Import data
     dir_in_loop = filenames(j);
-    np = 50;%np_all( floor((j-1)/length(tau)) + 1);
+    np = 101;%np_all( floor((j-1)/length(tau)) + 1);
     coord=importdata(strcat(dir_in_loop + '/coor.dat'));
 %     cog_force = importdata(strcat(dir_in_loop + '/cf.dat'));
     % Setup Video Writer

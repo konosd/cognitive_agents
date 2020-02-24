@@ -1,7 +1,7 @@
 %% Single Particle Simulations and Visualizations
 % parameters, number of agents, trajectories, etc.
-n_agent = [50];       %number of agents
-n_steps = 2e5;       %number of real steps
+n_agent = [100 200 400 600 800 1000];       %number of agents
+n_steps = 1e6;       %number of real steps
 n_vsteps = 100;
 n_traj = 1;        %number of trajectories
 sigma = 1;          %diameter
@@ -9,7 +9,7 @@ box_length = 80*sigma;    %area explored
 
 h = 0.005; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
-virt_t = [0:h:(n_vsteps)*h];
+virt_t = [0:h:(n_vsteps-1)*h];
 friction = 0.45;     %gamma
 temperature = 0.3;  %temperature
 
@@ -30,7 +30,7 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [0 0.5 0.8 1.5 10 5];    % energy intake from the environment
+q0 = [0.5 0.8 1.5 10 5];    % energy intake from the environment
 food_radius = 1e6;
 food_center = [(box_length*sigma*0.5) (box_length*sigma*0.5)];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
@@ -47,26 +47,27 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 
 
 %-------------------------------------------------------------------------
-%% ------------------ Initialization -------------------------------------
-% k = 1; %index for number of agents
-% iq = 1; % index for magnitutde of energy influx
-% l = 1; % index for number of virtual steps
-% 
-% % Filling fraction:
-% phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
-% disp("Filling fraction is " + phi)
-% % 
-% % 
-% % agent_coor = initialize_agents(n_agent(k), sigma, box_length);
-% agent_coor = [box_length/2, box_length/2];
-% agent_velo = [0 0];%zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
-% % 
-% 
-% 
-% force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
-% 
-% q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
+%% ------------------ Initialization --------------------------------------
+if false
+k = 1; %index for number of agents
+iq = 1; % index for magnitutde of energy influx
+l = 1; % index for number of virtual steps
 
+% Filling fraction:
+phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
+disp("Filling fraction is " + phi)
+% 
+% 
+agent_coor = initialize_agents(n_agent(k), sigma, box_length);
+agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
+% 
+
+
+force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
+plot_agents(agent_coor, sigma, box_length, force_init, 1)
+
+q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
+end
 
 %% ----------- To visualize one virtual trajectory of one agent -----------
 
@@ -99,7 +100,7 @@ U = @(x1,x2) 0.5 * a * (x1^2 + x2^2);
 %% ---- To visualize everything, solve the full problem, chunk below ------
 % % % 
 
-
+if true
 for iq = 1:length(q0)
     for l=1:length(n_vsteps)
         for k=1:length(n_agent)
@@ -107,7 +108,8 @@ for iq = 1:length(q0)
 
                     % Filling fraction:
             phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
-            disp("Filling fraction is " + phi)
+%             disp("Filling fraction is " + phi)
+            disp("q0 =" + q0(iq) + " and " + n_agent(k) + " agents")
 
 
             %% ------------- Initialization--------------------------------------------
@@ -122,7 +124,7 @@ for iq = 1:length(q0)
             mkdir(dir_name)
             
             
-            [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
+            [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent(k), agent_coor, ...
                     n_steps, sigma, box_length, repul_strength, friction, D, h, repul_type, d2, a, c, q);
             
 %             plot_agents(agent_coor, sigma, box_length, force_init, 1.0)
@@ -131,7 +133,7 @@ for iq = 1:length(q0)
 %                 plot_trajectory([x(paint_traj,:)' y(paint_traj,:)'] , box_length, rand(1,3))
 %             end
                 
-            incr = 10;
+            incr = 200;
             coordat = zeros(n_agent(k) * n_steps / incr, 5);
             for i=1:n_steps/incr
                 coordat(((i-1)*n_agent(k)+1):(i*n_agent(k)) , :) = [x(:,i) y(:,i) ...
@@ -144,7 +146,7 @@ for iq = 1:length(q0)
         end
     end
 end
-
+end
 
 
 
@@ -178,7 +180,7 @@ function init_agents = initialize_agents(n_agents, agent_diameter, box_dim)
     % --------- First set randomly the agents in the box --------------
     % make sure we have enough space
     theor_max = (fix(box_dim*0.5))^2;     %maximum number of agents
-    min_distance = 2.1 * agent_diameter;
+    min_distance = 1.1 * agent_diameter;
     radius = agent_diameter * 0.5;
     allowed_length = box_dim - agent_diameter;
     if n_agents >= theor_max
@@ -220,29 +222,28 @@ end
 function force_rep = repulsion(agent_coordinates, diameter, area,...
     strength, type)
     if type == "soft"
-        force_rep = zeros(size(agent_coordinates,1), 2);
-        for i = 1:size(agent_coordinates, 1)
-            for j = 1:size(agent_coordinates, 1)
-                Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
-                Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
-                if Dx > 0.5 * area
-                    Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
-                elseif Dx < -0.5 *area
-                    Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
-                end
-                if Dy > 0.5 * area
-                    Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
-                elseif Dy < -0.5 *area
-                    Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
-                end
-                ag_dist = sqrt(Dx^2 + Dy^2);
-                if i ~= j && ag_dist < 2 * diameter
-                    magnitude = strength*(2*diameter - ag_dist);
-                    force_rep(i,1) = force_rep(i,1) + magnitude * Dx/ ag_dist;
-                    force_rep(i,2) = force_rep(i,2) + magnitude * Dy/ ag_dist;
-                end
-            end
-        end
+        
+        extra_bound_coor = [ (agent_coordinates(agent_coordinates(:,1)>78,:) - [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,1)<2,:) + [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,2)<2,:) + [0 area]) ;
+            (agent_coordinates(agent_coordinates(:,2)>78,:) - [0 area]) ];
+        enriched_coordinates = [agent_coordinates ; extra_bound_coor];
+        
+        xij = agent_coordinates(:,1) - enriched_coordinates(:,1)' ;
+        yij = agent_coordinates(:,2) - enriched_coordinates(:,2)' ;
+        rij = sqrt(xij.^2 + yij.^2);
+        rr = diameter;
+        fijx = strength * (1 - rij/rr) .* xij ./rij;
+        fijy = strength * (1 - rij/rr) .* yij ./rij;
+        
+        fijx( rij > rr) = 0;
+        fijy( rij > rr) = 0;
+        fijx(isnan(fijx)) = 0;
+        fijy(isnan(fijy)) = 0;
+        fijx( rij ==0) =0;
+        fijy( rij ==0) =0;
+        force_rep = [ sum(fijx,2) sum(fijy,2) ];
+        
     elseif type == "hard"
         force_rep = zeros(size(agent_coordinates,1), 2);
         for i = 1:size(agent_coordinates,1)
@@ -389,19 +390,32 @@ function f_dis = dissipative( agent_coordinates, agent_velocities, ...
     diameter, area)
     
     dis_strength = 1.5;
-    repulsion_radius = diameter;
-    cutoff_radius = area;
+    repulsion_radius = 1;
+    cutoff_radius = 2;
 
-    xij = agent_coordinates(:,1) - agent_coordinates(:,1)' ;
-    yij = agent_coordinates(:,2) - agent_coordinates(:,2)' ;
-    uij = agent_velocities(:,1) - agent_velocities(:,1)' ;
-    vij = agent_velocities(:,2) - agent_velocities(:,2)' ;
+    extra_bound_coor = [ (agent_coordinates(agent_coordinates(:,1)>78,:) - [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,1)<2,:) + [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,2)<2,:) + [0 area]) ;
+            (agent_coordinates(agent_coordinates(:,2)>78,:) - [0 area]) ];
+    enriched_coordinates = [agent_coordinates ; extra_bound_coor];
+        
+    extra_bound_velo = [ (agent_velocities(agent_coordinates(:,1)>78,:)) ;
+            (agent_velocities(agent_coordinates(:,1)<2,:)) ;
+            (agent_velocities(agent_coordinates(:,2)<2,:)) ;
+            (agent_velocities(agent_coordinates(:,2)>78,:))];
+    enriched_velo = [agent_velocities ; extra_bound_velo];    
+    
+    xij = agent_coordinates(:,1) - enriched_coordinates(:,1)' ;
+    yij = agent_coordinates(:,2) - enriched_coordinates(:,2)' ;
+    uij = agent_velocities(:,1) - enriched_velo(:,1)' ;
+    vij = agent_velocities(:,2) - enriched_velo(:,2)' ;
     
     rij = sqrt( xij.^2 + yij.^2);
     omegaij = (1 - rij / cutoff_radius).^2;
     omegaij(rij > repulsion_radius) = 0;
+    omegaij(rij == 0) = 0;
     
-    magnitude = -dis_strength * omegaij * ( xij.*uij + yij.*vij) ./rij;
+    magnitude = -dis_strength * omegaij .* ( xij.*uij + yij.*vij) ./rij;
     
     f_dis_x = magnitude .* xij ./ rij;
     f_dis_y = magnitude .* yij ./ rij;
@@ -634,6 +648,7 @@ function [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
         v(:,j) = v(:,j-1) + h*f_det_y + dw(:,2);
         e(:,j) = q(x(:,j),y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));
         
+%         disp([j max(max(u))])
         % Update grid
         grid_coor = [x(:,j) y(:,j)];
     end
