@@ -1,13 +1,13 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = [400];       %number of agents
+n_agent = [100];       %number of agents
 n_vsteps = [200];      %number of virtual steps
-n_steps = 2000;       %number of real steps
-n_traj = 360;        %number of trajectories
+n_steps = 1000;       %number of real steps
+n_traj = 36;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.1; %timestep = 0.001;     % dt timestep
+h = 0.05; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
 friction = 0.45;     %gamma
@@ -18,7 +18,7 @@ thermostat = 2;
 D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
 
-repul_strength = 1.0;
+repul_strength = 10.0;
 repul_exp = 10.0;
 repul_type = "soft";
 v_repul_type = "soft";
