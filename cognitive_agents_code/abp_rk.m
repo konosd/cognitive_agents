@@ -1,17 +1,17 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = [100];       %number of agents
-n_vsteps = [200];      %number of virtual steps
-n_steps = 1000;       %number of real steps
-n_traj = 36;        %number of trajectories
+n_agent = [100, 200, 400, 600, 800, 1000];       %number of agents
+n_vsteps = [20, 50, 80, 120, 200];      %number of virtual steps
+n_steps = 5000;       %number of real steps
+n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.05; %timestep = 0.001;     % dt timestep
+h = 0.1; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps)*h];
-friction = 0.45;     %gamma
-temperature = 0.3;  %temperature
+friction = 1;     %gamma
+temperature = 1;  %temperature
 
 thermostat = 2; 
 
@@ -21,7 +21,7 @@ D = friction*temperature; %0.01;
 repul_strength = 10.0;
 repul_exp = 10.0;
 repul_type = "soft";
-v_repul_type = "soft";
+v_repul_type = "hard";
 pi = 4 * atan(1);
 
 % Add synthetic agents - this is where you define whether an agent will be
@@ -32,7 +32,7 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [0];    % energy intake from the environment
+q0 = [0, 1.5];    % energy intake from the environment
 food_radius = 1e20;
 food_center = [80*sigma*0.5 80*sigma*0.5];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
@@ -79,15 +79,15 @@ agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
 %     
 % % % To start with agent 1 in a box of other agents but not centered
 % % For synthetic ones
-            synthetic = [2:n_agent];
-            agent_coor = [ [(box_length/2+15*sigma); ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8); ...
-            ones((n_agent-1)/4,1)*(box_length/2 + (n_agent-1)*sigma/8); ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ; ...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]'] ...
-            [(box_length/2+5*sigma) ; [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]' ;...
-            [(box_length/2 - (n_agent-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent-1)*sigma/8)]';...
-            ones((n_agent-1)/4,1)*(box_length/2- (n_agent-1)*sigma/8);...
-            ones((n_agent-1)/4,1)*(box_length/2 +  (n_agent-1)*sigma/8)]];
+            synthetic = [2:n_agent(k)];
+            agent_coor = [ [(box_length/2+10*sigma); ones((n_agent(k)-1)/4,1)*(box_length/2- (n_agent(k)-1)*sigma/8); ...
+            ones((n_agent(k)-1)/4,1)*(box_length/2 + (n_agent(k)-1)*sigma/8); ...
+            [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]' ; ...
+            [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]'] ...
+            [(box_length/2+10*sigma) ; [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]' ;...
+            [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]';...
+            ones((n_agent(k)-1)/4,1)*(box_length/2- (n_agent(k)-1)*sigma/8);...
+            ones((n_agent(k)-1)/4,1)*(box_length/2 +  (n_agent(k)-1)*sigma/8)]];
 % 
 
 force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
@@ -112,7 +112,7 @@ fig = figure(1);
 plot_agents(agent_coor, sigma, box_length, force_init, 1)
 
 e_cef = [0 0];
-for loopa = 1:10
+for loopa = 1:1
 gyrations = zeros(n_traj,1);
 traj_mean = zeros(n_traj,2);
 traj_init=zeros(n_traj,2);
@@ -120,7 +120,7 @@ cef = [0 0];
 for tr = 1:n_traj
    [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
      n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
-%      plot_trajectory(bound, box_length, rand(1,3))
+     plot_trajectory(bound, box_length, rand(1,3))
     gyrations(tr) = calc_gyration(my_virt_traj);
     traj_mean(tr,:) = mean(my_virt_traj-agent_coor(1,:) ,1);
 end
@@ -191,8 +191,8 @@ for iq = 1:length(q0)
             force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
-
-            dir_name = strcat("corrected_passive_dotp_" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            
+            dir_name = strcat("original/n" + n_agent(k) + "_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
             mkdir(dir_name)
 
             [all_x, all_y, vel_x, vel_y, lambda, all_cfx, all_cfy] = cef_solver( agent_coor,...
@@ -200,7 +200,7 @@ for iq = 1:length(q0)
                 box_length, repul_strength, friction, D, h, n_vsteps(l), ...
                 n_steps, repul_type, v_repul_type, false, d2, a, c, q, synthetic, thermostat);
 
-            incr = 10;
+            incr = 5;
             coordat = zeros(n_agent(k) * n_steps / incr, 4);
             cfdat = zeros(n_agent(k) * n_steps / incr, 2);
             for i=1:n_steps/incr
@@ -378,99 +378,71 @@ end
 function force_rep = repulsion_agent(agent_coordinates, i, ...
         diameter, area, strength, type)
     if type == "soft"
-        force_rep = zeros(1, 2);
-        for j = 1:size(agent_coordinates, 1)
-            Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
-            Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
-            if Dx > 0.5 * area
-                Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
-            elseif Dx < -0.5 *area
-                Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
-            end
-            if Dy > 0.5 * area
-                Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
-            elseif Dy < -0.5 *area
-                Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
-            end
-            ag_dist = sqrt(Dx^2 + Dy^2);
-%             if i ~= j && ag_dist < 2 * diameter
-%                 magnitude = strength*(2*diameter - ag_dist);
-%                 force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
-%                 force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
-%             end
-            if i ~= j && ag_dist < 2 * diameter
-                magnitude = strength*(2*diameter - ag_dist);
-                force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
-                force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
-            end
+        extra_bound_coor = [ (agent_coordinates(agent_coordinates(:,1)>78,:) - [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,1)<2,:) + [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,2)<2,:) + [0 area]) ;
+            (agent_coordinates(agent_coordinates(:,2)>78,:) - [0 area]) ];
+        enriched_coordinates = [agent_coordinates ; extra_bound_coor];
 
-        end
+        xij = agent_coordinates(i,1) - enriched_coordinates(:,1)' ;
+        yij = agent_coordinates(i,2) - enriched_coordinates(:,2)' ;
+        rij = sqrt(xij.^2 + yij.^2);
+        rr = diameter;
+        fijx = strength * (1 - rij/rr) .* xij ./rij;
+        fijy = strength * (1 - rij/rr) .* yij ./rij;
+
+        fijx( rij > rr) = 0;
+        fijy( rij > rr) = 0;
+        fijx(isnan(fijx)) = 0;
+        fijy(isnan(fijy)) = 0;
+        fijx( rij ==0) =0;
+        fijy( rij ==0) =0;
+        force_rep = [ sum(fijx) sum(fijy) ];
+
     elseif type == "hard"
-        force_rep = zeros(1, 2);
-        for j = 1:size(agent_coordinates,1)
-            Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
-            Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
-            if Dx > 0.5 * area
-                Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
-            elseif Dx < -0.5 *area
-                Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
-            end
-            if Dy > 0.5 * area
-                Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
-            elseif Dy < -0.5 *area
-                Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
-            end
-            ag_dist = sqrt(Dx^2 + Dy^2);
-            if i ~= j && ag_dist < 2 * diameter
-                magnitude = strength;
-                force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
-                force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
-            end
-        end
+        extra_bound_coor = [ (agent_coordinates(agent_coordinates(:,1)>78,:) - [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,1)<2,:) + [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,2)<2,:) + [0 area]) ;
+            (agent_coordinates(agent_coordinates(:,2)>78,:) - [0 area]) ];
+        enriched_coordinates = [agent_coordinates ; extra_bound_coor];
+
+        xij = agent_coordinates(i,1) - enriched_coordinates(:,1)' ;
+        yij = agent_coordinates(i,2) - enriched_coordinates(:,2)' ;
+        rij = sqrt(xij.^2 + yij.^2);
+        rr = diameter;
+        fijx = strength .* xij ./rij;
+        fijy = strength .* yij ./rij;
+
+        fijx( rij > rr) = 0;
+        fijy( rij > rr) = 0;
+        fijx(isnan(fijx)) = 0;
+        fijy(isnan(fijy)) = 0;
+        fijx( rij ==0) =0;
+        fijy( rij ==0) =0;
+        force_rep = [ sum(fijx) sum(fijy) ];
+
     elseif type == "exponential"
-        force_rep = zeros(1, 2);
-        for j = 1:size(agent_coordinates,1)
-            Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
-            Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
-            if Dx > 0.5 * area
-                Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
-            elseif Dx < -0.5 *area
-                Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
-            end
-            if Dy > 0.5 * area
-                Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
-            elseif Dy < -0.5 *area
-                Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
-            end
-            ag_dist = sqrt(Dx^2 + Dy^2);
-            if i ~= j 
-                magnitude = strength / (ag_dist^2);
-                force_rep(1) = force_rep(1) + magnitude * Dx/ ag_dist;
-                force_rep(2) = force_rep(2) + magnitude * Dy/ ag_dist;
-            end
-        end
-    elseif type == "elastic"
-        % For elastic collisions the force_rep variable just returns the
-        % velocity of the agent that our particle is colliding with.
-        force_rep = 0;
-        for j = 1:size(agent_coordinates,1)
-            Dx = agent_coordinates(i,1) - agent_coordinates(j,1);
-            Dy = agent_coordinates(i,2) - agent_coordinates(j,2);
-            if Dx > 0.5 * area
-                Dx = -(area + agent_coordinates(j,1) - agent_coordinates(i,1));
-            elseif Dx < -0.5 *area
-                Dx = area - agent_coordinates(j,1) + agent_coordinates(i,1);
-            end
-            if Dy > 0.5 * area
-                Dy = -(area + agent_coordinates(j,2) - agent_coordinates(i,2));
-            elseif Dy < -0.5 *area
-                Dy = area - agent_coordinates(j,2) + agent_coordinates(i,2);
-            end
-            ag_dist = sqrt(Dx^2 + Dy^2);
-            if i ~= j && ag_dist <= diameter
-                force_rep = [Dx Dy];
-            end
-        end
+        extra_bound_coor = [ (agent_coordinates(agent_coordinates(:,1)>78,:) - [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,1)<2,:) + [area 0]) ;
+            (agent_coordinates(agent_coordinates(:,2)<2,:) + [0 area]) ;
+            (agent_coordinates(agent_coordinates(:,2)>78,:) - [0 area]) ];
+        enriched_coordinates = [agent_coordinates ; extra_bound_coor];
+
+        xij = agent_coordinates(i,1) - enriched_coordinates(:,1)' ;
+        yij = agent_coordinates(i,2) - enriched_coordinates(:,2)' ;
+        rij = sqrt(xij.^2 + yij.^2);
+        rr = 10*diameter;
+        magnitude = strength ./((rij).^2) ;
+        fijx = magnitude .* xij ./rij;
+        fijy = magnitude .* yij ./rij;
+
+        fijx( rij > rr) = 0;
+        fijy( rij > rr) = 0;
+        fijx(isnan(fijx)) = 0;
+        fijy(isnan(fijy)) = 0;
+        fijx( rij ==0) =0;
+        fijy( rij ==0) =0;
+        force_rep = [ sum(fijx,2) sum(fijy,2) ];
     end
 end
 % -------------------------------------------------------------------------
@@ -578,7 +550,7 @@ function gyration = calc_gyration(trajectory)
         gyration = gyration + (trajectory(i,:) - mean_gyration).^2 ;
     end
     gyration = gyration/(length(trajectory)-1);
-    gyration = sqrt(gyration(1)^2 + gyration(2)^2);
+    gyration = gyration(1)^2 + gyration(2)^2;
 
 end
 % -------------------------------------------------------------------------
@@ -638,11 +610,11 @@ function [new_coor, new_velo, cog_force] = next_timestep( agent_coor, ...
         if ~ismember(agent, synthetic)
             % Calculate langevin force based on gyration
             f_lang_agent = zeros(1,2);
-%             agent_mean_gyration = mean(all_gyrations(agent,:));
+            agent_mean_gyration = mean(all_gyrations(agent,:));
             for j=1:n_traj
-                norm_gyr = log(all_gyrations(agent,j));%/agent_mean_gyration);
-                dotp = dot( [traj_init(agent, j,1) traj_init(agent, j,2)] , [traj_mean(agent, j,1) traj_mean(agent, j,2)]'  );
-                f_lang_agent = f_lang_agent + norm_gyr * [traj_init(agent,j,1) ,traj_init(agent,j,2)]* ( dotp/abs(dotp));
+                norm_gyr = log(all_gyrations(agent,j)/agent_mean_gyration);
+%                 dotp = dot( [traj_init(agent, j,1) traj_init(agent, j,2)] , [traj_mean(agent, j,1) traj_mean(agent, j,2)]'  );
+                f_lang_agent = f_lang_agent + norm_gyr * [traj_init(agent,j,1) ,traj_init(agent,j,2)];%* ( dotp/abs(dotp));
             end
             f_lang_agent = 2* thermostat *f_lang_agent/n_traj;
             if isnan(norm_gyr)

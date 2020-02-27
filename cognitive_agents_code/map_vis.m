@@ -2,25 +2,25 @@
 
 %% Get parameters from running the previous script
 
-np_all = [100];       %number of agents
-tau = [200];      %number of virtual steps
+np_all = [400];       %number of agents
+tau = [100];      %number of virtual steps
 
-nst=n_steps;
-type = repul_type;
+nst=10000;
+type = "soft";
 % Choose to save video and image
 save_video=1;
 save_figure=0;   
 
-scale=10;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
+scale=1;  %Scale adjusts arrow size ('30' is an OK one or '0' for no arrows)
 
-nvt=n_traj; %No of virtual trajectories 
-box = sigma * 80;
-Ar= repul_strength;  %Force strength   
-Br = repul_exp;
+nvt=36; %No of virtual trajectories 
+box = 1 * 80;
+Ar= 10;  %Force strength   
+Br = 10;
 
 %% -------------------     Set up visualization     -----------------------
 
-my_files = dir('em_cogforce*');
+my_files = dir('passive/original/n400_vsteps80_ntraj2*');
 filenames = strings(length(my_files),1);
 for i=1:length(my_files)
    filenames(i) = my_files(i).name;
@@ -31,12 +31,12 @@ end
 for j=1:size(filenames)
     % Import data
     dir_in_loop = filenames(j);
-    np = 100;%np_all( floor((j-1)/length(tau)) + 1);
-    coord=importdata(strcat(dir_in_loop + '/coor.dat'));
+    np = np_all(j);%np_all( floor((j-1)/length(tau)) + 1);
+    coord=importdata('geometric/'+strcat(dir_in_loop + '/coor.dat'));
 %     cog_force = importdata(strcat(dir_in_loop + '/cf.dat'));
     % Setup Video Writer
     if save_video
-        video_path = char(strcat('/project/home19/kn119/Documents/cognitive_agents/cognitive_agents_code/' +dir_in_loop + '/coor.avi'));
+        video_path = char(strcat('/project/home19/kn119/Documents/cognitive_agents/cognitive_agents_code/geometric/' +dir_in_loop + '/coor.avi'));
         vobj = VideoWriter(video_path);
         vobj.FrameRate = 10;
         vobj.open;

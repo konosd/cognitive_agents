@@ -1,27 +1,28 @@
 %% Single Particle Simulations and Visualizations
 % parameters, number of agents, trajectories, etc.
-n_agent = [100, 200, 400, 600, 800, 1000];       %number of agents
-n_steps = 5e3;       %number of real steps
-n_vsteps = [20, 30, 50, 80, 100, 120];
-n_traj = 20;        %number of trajectories
+n_agent = [ 400, 600, 800, 1000];       %number of agents
+n_steps = 1e5;       %number of real steps
+n_vsteps = 100;
+cog_size = [1, 4, 6, 8, 10];
+n_traj = 36;        %number of trajectories
 sigma = 1;          %diameter
 box_length = 80*sigma;    %area explored
 
-h = 0.1; %timestep = 0.001;     % dt timestep
+h = 0.01; %timestep = 0.001;     % dt timestep
 t = [0:h:(n_steps-1)*h];
 virt_t = [0:h:(n_vsteps-1)*h];
-friction = 0.45;     %gamma
-temperature = 0.6;  %temperature
+friction = 1;     %gamma
+temperature = 1;  %temperature
 
-thermostat = 2; %for cognitive force;
+thermostat = 10; %for cognitive force;
 
 D = friction*temperature; %0.01;
 %noise = sqrt(2.0*friction*temperature/timestep);
 
-repul_strength = 10;%20.0;
+repul_strength = 20;%20.0;
 repul_exp = 10.0;
 repul_type = "soft";
-v_repul_type = "hard";
+v_repul_type = "soft";
 pi = 4 * atan(1);
 
 % Add synthetic agents - this is where you define whether an agent will be
@@ -32,7 +33,7 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [5, 10];    % energy intake from the environment
+q0 = [0, 1.5, 5, 10];    % energy intake from the environment
 food_radius = 1e6;
 food_center = [(box_length*sigma*0.5) (box_length*sigma*0.5)];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
@@ -162,7 +163,7 @@ end
 
 if true
 for iq = 1:length(q0)
-    for l=1:length(n_vsteps)
+    for l=1:length(cog_size)
         for k=1:length(n_agent)
 
 
@@ -181,13 +182,12 @@ for iq = 1:length(q0)
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1)).^2 + (x2-food_center(2)).^2) < food_radius^2 );
 
-            dir_name = strcat("original/n" + n_agent(k) + "_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            dir_name = strcat("geometric/" + n_agent(k) + "_phi"+phi+"_cogsize"+cog_size(l)+"_steps"+n_steps+"_q"+q0(iq));
             mkdir(dir_name)
 
 
-            [x, y, u, v, e] = cog_force_em_solver(agent_coor, agent_velo, ...
-                agent_e, n_agent(k), n_steps, n_vsteps(l), n_traj, sigma, box_length,...
-                repul_strength, friction, D, h, repul_type, v_repul_type, d2, a, c, q, thermostat);
+            [x, y, u, v, e] = abp_em_cnst_de_solver_yomama( n_agent(k), agent_coor, ...
+    n_steps, sigma, box_length, repul_strength, friction, D, h, repul_type, d2, a, c, q, cog_size(l), thermostat);
             
             
 %             plot_agents(agent_coor, sigma, box_length, force_init, 1.0)
@@ -295,7 +295,7 @@ function force_rep = repulsion(agent_coordinates, diameter, area,...
         xij = agent_coordinates(:,1) - enriched_coordinates(:,1)' ;
         yij = agent_coordinates(:,2) - enriched_coordinates(:,2)' ;
         rij = sqrt(xij.^2 + yij.^2);
-        rr = 1*diameter;
+        rr = 3*diameter;
         fijx = strength * (1 - rij/rr) .* xij ./rij;
         fijy = strength * (1 - rij/rr) .* yij ./rij;
 
@@ -374,7 +374,7 @@ function force_rep = repulsion_agent(agent_coordinates, i, ...
         xij = agent_coordinates(i,1) - enriched_coordinates(:,1)' ;
         yij = agent_coordinates(i,2) - enriched_coordinates(:,2)' ;
         rij = sqrt(xij.^2 + yij.^2);
-        rr = diameter;
+        rr = 3*diameter;
         fijx = strength * (1 - rij/rr) .* xij ./rij;
         fijy = strength * (1 - rij/rr) .* yij ./rij;
 
@@ -443,7 +443,7 @@ end
 function f_dis = dissipative( agent_coordinates, agent_velocities, ...
     diameter, area)
 
-    dis_strength = 1.5;
+    dis_strength = 0;
     repulsion_radius = 1*diameter;
     cutoff_radius = 2*diameter;
 
@@ -541,12 +541,20 @@ end
 %% ------------------------------------------------------------------------
 % -------------------- Cognitive force based on yo mama -------------------
 % -------------------------------------------------------------------------
-function cog_f = analytical_cog_force(agent_coor, cog_size, radius, thermostat)
+function cog_f = analytical_cog_force(agent_coor, cog_size, radius, thermostat, area)
+
+    extra_bound_coor = [ (agent_coor(agent_coor(:,1)>(area-cog_size),:) - [area 0]) ;
+            (agent_coor(agent_coor(:,1)<cog_size,:) + [area 0]) ;
+            (agent_coor(agent_coor(:,2)<cog_size,:) + [0 area]) ;
+            (agent_coor(agent_coor(:,2)>(area-cog_size),:) - [0 area]) ];
+    enriched_coordinates = [agent_coor ; extra_bound_coor];
+    
     cog_f = zeros( size(agent_coor,1), 2);
     
-    xij = agent_coor(:,1) - agent_coor(:,1)' ;
-    yij = agent_coor(:,2) - agent_coor(:,2)' ;
+    xij = agent_coor(:,1) - enriched_coordinates(:,1)' ;
+    yij = agent_coor(:,2) - enriched_coordinates(:,2)' ;
     rij2 =  xij.^2 + yij.^2  ;
+    rij2( rij2 <= radius ) = (1.1*radius)^2;
 %         if (rij ~= 0 && rij <= cog_size)
     dthetadx = -radius* (rij2 .^ (-1.5)) ./ sqrt(1-radius^2./rij2) .* xij;
     dthetady = -radius* (rij2 .^ (-1.5)) ./ sqrt(1-radius^2./rij2) .* yij;
@@ -566,6 +574,9 @@ function cog_f = analytical_cog_force(agent_coor, cog_size, radius, thermostat)
     fx = 0.5* thermostat* (log(2*pi) +1) * ( (radius^2 - cog_size^2) * sum(dthetadx,2) + radius * sum(doadx,2));
     fy = 0.5* thermostat* (log(2*pi) +1) * ( (radius^2 - cog_size^2) * sum(dthetady,2) + radius * sum(doady,2));
     cog_f = [fx fy]/(cog_size^2 * pi);
+    if ~isreal(cog_f)
+        disp("Oops")
+    end
    
     
 end
@@ -738,11 +749,11 @@ end
 
 %% ------------------------------------------------------------------------
 % -------------------- E.M. Integrator Cnst de/dt Solver ------------------
-% -------------------------------------------------------------------------
+% --------------------------with yo mama's force---------------------------------
 %
 
-function [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
-    n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q)
+function [x, y, u, v, e] = abp_em_cnst_de_solver_yomama(n_agent, agent_coor, ...
+    n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q, cog_size, thermostat)
 
 
     % Initialize vectors of path and velocities
@@ -767,12 +778,14 @@ function [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
 
         % find repulsion force for step
         f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
-        f_dis = dissipative( grid_coor, [u(:,j-1) v(:,j-1)], diameter, area);
+        f_dis = [0 0];%dissipative( grid_coor, [u(:,j-1) v(:,j-1)], diameter, area);
+        f_cog = analytical_cog_force(grid_coor, cog_size, diameter, thermostat, area);
+    
         %
 
-        f_det_x = f_rep(:,1) + f_dis(:,1) -friction * u(:,j-1) + ...
+        f_det_x = f_rep(:,1) + f_dis(:,1) +f_cog(:,1) -friction * u(:,j-1) + ...
             d2 * e(:,j-1).* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
-        f_det_y = f_rep(:,2) + f_dis(:,2) -friction * v(:,j-1) + ...
+        f_det_y = f_rep(:,2) + f_dis(:,2) + f_cog(:,2) -friction * v(:,j-1) + ...
             d2 * e(:,j-1).* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
 
         %         f2 = -friction *db + virt_steps_noise(j,:);
@@ -785,243 +798,12 @@ function [x, y, u, v, e] = abp_em_cnst_de_solver(n_agent, agent_coor, ...
         u(:,j) = u(:,j-1) + h*f_det_x + dw(:,1);
         v(:,j) = v(:,j-1) + h*f_det_y + dw(:,2);
         e(:,j) = q(x(:,j),y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));
+        
+        disp("Step "+j +" done. Total kinetic energy is " + 0.5*sum(u(:,j).^2 + v(:,j).^2))
 
 %         disp([j max(max(u))])
         % Update grid
         grid_coor = [x(:,j) y(:,j)];
-    end
-
-end
-% -------------------------------------------------------------------------
-% -------------------------------------------------------------------------
-
-
-
-%% ------------------------------------------------------------------------
-% -------------------- E.M. Integrator with yo mama's force----------------
-% -------------------------------------------------------------------------
-%
-
-function [x, y, u, v, e] = em_cf_yomama(n_agent, agent_coor, ...
-    n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q)
-
-
-    % Initialize vectors of path and velocities
-    x = zeros(n_agent, n_steps);
-    y = zeros(n_agent, n_steps);
-    u = zeros(n_agent, n_steps);
-    v = zeros(n_agent, n_steps);
-    e = zeros(n_agent, n_steps);
-
-    x(:,1) = agent_coor(:,1);
-    y(:,1) = agent_coor(:,2);
-
-    grid_coor = agent_coor;
-
-
-
-        % Euler-Murayama method
-    for j=2:n_steps
-
-        % Generate random numbers for noise for every step
-        dw = sqrt(2*D*h) * bivariate_normal(n_agent);
-
-        % find repulsion force for step
-        f_rep = repulsion(grid_coor, diameter, area, strength, repul_type);
-        f_dis = dissipative( grid_coor, [u(:,j-1) v(:,j-1)], diameter, area);
-        %
-
-        f_det_x = f_rep(:,1) + f_dis(:,1) -friction * u(:,j-1) + ...
-            d2 * e(:,j-1).* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2);
-        f_det_y = f_rep(:,2) + f_dis(:,2) -friction * v(:,j-1) + ...
-            d2 * e(:,j-1).* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2);
-
-        %         f2 = -friction *db + virt_steps_noise(j,:);
-        %         disp(f_langevin-f2)
-        %         pause(1)
-        % update velocity and position of virtual timestep
-
-        x(:,j) = mod( (x(:,j-1) + h*u(:,j-1)), area);
-        y(:,j) = mod( (y(:,j-1) + h*v(:,j-1)), area);
-        u(:,j) = u(:,j-1) + h*f_det_x + dw(:,1);
-        v(:,j) = v(:,j-1) + h*f_det_y + dw(:,2);
-        e(:,j) = q(x(:,j),y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));
-
-%         disp([j max(max(u))])
-        % Update grid
-        grid_coor = [x(:,j) y(:,j)];
-    end
-
-end
-% -------------------------------------------------------------------------
-% -------------------------------------------------------------------------
-
-
-
-%% ------------------------------------------------------------------------
-% ------------- Modify EM Integrator for one agent    ---------------------
-% ------------- Basically visual trajectory creation  ---------------------
-% -------------------------------------------------------------------------
-function [x, y, u, v, e, f_init, bound] = virtual_trajectory(i, agent_coor, agent_velo,...
-    agent_e, n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q)
-
-
-    % Initialize vectors of path and velocities
-    x = zeros(n_steps,1);
-    y = zeros(n_steps,1);
-    u = zeros(n_steps,1);
-    v = zeros(n_steps,1);
-    e = zeros(n_steps,1);
-    bound = zeros(n_steps,2);
-
-    x(1) = agent_coor(i,1);
-    y(1) = agent_coor(i,2);
-    bound(1,:) = [x(1), y(1)];
-    u(1) = agent_velo(i,1);
-    v(1) = agent_velo(i,2);
-    e(1) = agent_e(i);
-
-    grid_coor = agent_coor;
-    grid_velo = agent_velo;
-    
-    f_init = sqrt(2*D*h) * bivariate_normal(1);
-    dw = f_init;
-
-
-        % Euler-Murayama method
-    for j=2:n_steps
-
-        
-        % find repulsion force for step
-        f_rep = repulsion_agent(grid_coor, i, diameter, area, strength, repul_type);
-        f_dis = [0 0];%dissipative_agent( grid_coor, i, grid_velo, diameter, area);
-        %
-
-        f_det_x = f_rep(1) + f_dis(1) -friction * u(j-1) + ...
-            d2 * e(j-1).* u(j-1) - 0.5*a*(x(j-1)-area/2);
-        f_det_y = f_rep(2) + f_dis(2) -friction * v(j-1) + ...
-            d2 * e(j-1).* v(j-1) - 0.5*a*(y(j-1)-area/2);
-
-        %         f2 = -friction *db + virt_steps_noise(j,:);
-        %         disp(f_langevin-f2)
-        %         pause(1)
-        % update velocity and position of virtual timestep
-
-        x(j) = x(j-1) + h*u(j-1);
-        y(j) = y(j-1) + h*v(j-1);
-        u(j) = u(j-1) + h*f_det_x + dw(1);
-        v(j) = v(j-1) + h*f_det_y + dw(2);
-        e(j) = q(x(j),y(j))./(c+d2*(sqrt(v(j).^2 + u(j).^2).^2));
-
-%         disp([j max(max(u))])
-        % Update grid
-        grid_coor(i,:) = [mod(x(j),area) mod(y(j), area)];
-        bound(j,:) = [mod(x(j),area) mod(y(j), area)];
-        grid_velo(i,:) = [u(j-1) v(j-1)];
-        
-        % Generate random numbers for noise for every step after the first
-        % one
-        dw = sqrt(2*D*h) * bivariate_normal(1);
-    end
-
-end
-% -------------------------------------------------------------------------
-% -------------------------------------------------------------------------
-
-
-
-%% ------------------------------------------------------------------------
-% ------------- Calculate cognitive force from trajectories ---------------
-% -------------------------------------------------------------------------
-function cog_force = calc_cogforce(n_agent, agent_coor, agent_velo, ...
-    agent_e, n_steps, n_trajectories, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q, thermostat)
-    
-    cog_force = zeros(n_agent,2);
-    parfor agent_no = 1:n_agent
-        for traj = 1:n_trajectories
-           [x,y,u,v,e,f_init,bound] = virtual_trajectory(agent_no, agent_coor, agent_velo,...
-               agent_e, n_steps, diameter, area, strength, friction, D, h, repul_type, d2, a, c, q);
-           mean_traj = [mean(x) mean(y)];
-           gyration = ([x y] - mean_traj).^2;
-           gyration =  (gyration(:,1)+gyration(:,2))/n_steps;
-           gyration = sum(gyration);
-           mean_traj = mean([(x-agent_coor(agent_no,1)) (y-agent_coor(agent_no,2))]);
-%            dotp = dot( f_init, mean_traj );
-           gyration = log(gyration) ;%* dotp/abs(dotp);
-           cog_force(agent_no,:) = cog_force(agent_no,:) + 2* thermostat * gyration * f_init;
-        end
-    end
-    cog_force = cog_force/n_trajectories;
-end
-
-% -------------------------------------------------------------------------
-% -------------------------------------------------------------------------
-
-
-
-%% ------------------------------------------------------------------------
-% ------- Integrator to solve the problem with cognitive force ------------
-% ------------- Basically visual trajectory creation  ---------------------
-% -------------------------------------------------------------------------
-function [x, y, u, v, e] = cog_force_em_solver(agent_coor, agent_velo,...
-    agent_e, n_agent, n_steps, n_vsteps, n_trajectories, diameter, area, ...
-    strength, friction, D, h, repul_type, v_repul_type, d2, a, c, q, thermostat)
-
-
-    % Initialize vectors of path and velocities
-    x = zeros(n_agent,n_steps);
-    y = zeros(n_agent,n_steps);
-    u = zeros(n_agent,n_steps);
-    v = zeros(n_agent,n_steps);
-    e = zeros(n_agent,n_steps);
-
-    x(:,1) = agent_coor(:,1);
-    y(:,1) = agent_coor(:,2);
-    u(:,1) = agent_velo(:,1);
-    v(:,1) = agent_velo(:,2);
-    e(:,1) = agent_e(:,1);
-    
-
-        % Euler-Murayama method
-    for j=2:n_steps
-        
-        % Hornischer paper does not have noise in real movement. Noise is
-        % added through cognitive force maybe.
-        %dw = sqrt(2*D*h) * bivariate_normal();
-        
-        %cognitive force for every agent
-        cog_f = calc_cogforce(n_agent, [x(:,j-1) y(:,j-1)], [u(:,j-1) v(:,j-1)], ...
-                e(:,j-1), n_vsteps, n_trajectories, diameter, area, strength, friction,...
-                D, h, v_repul_type, d2, a, c, q, thermostat);
-        
-        
-        % find forces for step
-        f_rep = repulsion([x(:,j-1) y(:,j-1)], diameter, area, strength, repul_type);
-        f_dis = [0 0];%dissipative( [x(:,j-1) y(:,j-1)], [u(:,j-1) v(:,j-1)], diameter, area);
-        %
-
-        f_det_x = f_rep(:,1) + f_dis(:,1) -friction * u(:,j-1) + ...
-            d2 * e(:,j-1).* u(:,j-1) - 0.5*a*(x(:,j-1)-area/2) + cog_f(:,1);
-        f_det_y = f_rep(:,2) + f_dis(:,2) -friction * v(:,j-1) + ...
-            d2 * e(:,j-1).* v(:,j-1) - 0.5*a*(y(:,j-1)-area/2) + cog_f(:,2);
-
-        %         f2 = -friction *db + virt_steps_noise(j,:);
-        %         disp(f_langevin-f2)
-        %         pause(1)
-        % update velocity and position of virtual timestep
-
-        x(:,j) = mod( (x(:,j-1) + h*u(:,j-1)), area);
-        y(:,j) = mod( (y(:,j-1) + h*v(:,j-1)), area);
-        u(:,j) = u(:,j-1) + h*f_det_x ;%+ dw(1);
-        v(:,j) = v(:,j-1) + h*f_det_y ;%+ dw(2);
-        e(:,j) = q(x(:,j),y(:,j))./(c+d2*(sqrt(v(:,j).^2 + u(:,j).^2).^2));
-
-%         disp([j max(max(u))])
-        
-        % Generate random numbers for noise for every step after the first
-        % one
-%         dw = sqrt(2*D*h) * bivariate_normal(1);
-        disp("Step "+j + " done, "+ "Average Kinetic energy is " + sum(u(:,j).^2 + v(:,j).^2)/n_agent)
     end
 
 end

@@ -120,7 +120,7 @@ for iq = 1:length(q0)
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1)).^2 + (x2-food_center(2)).^2) < food_radius^2 );
 
-            dir_name = strcat("em_wforce" + n_agent(k) + "_phi"+phi+"_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            dir_name = strcat("active/original/n" + n_agent(k) + "_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
             mkdir(dir_name)
             
             
@@ -389,7 +389,7 @@ end
 function f_dis = dissipative( agent_coordinates, agent_velocities, ...
     diameter, area)
     
-    dis_strength = 1.5;
+    dis_strength = 0;
     repulsion_radius = 1;
     cutoff_radius = 2;
 
