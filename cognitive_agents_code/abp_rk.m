@@ -1,7 +1,7 @@
 %%
 % parameters, number of agents, trajectories, etc.
-n_agent = [100, 200, 400, 600, 800, 1000];       %number of agents
-n_vsteps = [20, 50, 80, 120, 200];      %number of virtual steps
+n_agent = [2];       %number of agents
+n_vsteps = [120];      %number of virtual steps
 n_steps = 5000;       %number of real steps
 n_traj = 20;        %number of trajectories
 sigma = 1;          %diameter
@@ -13,7 +13,7 @@ virt_t = [0:h:(n_vsteps)*h];
 friction = 1;     %gamma
 temperature = 1;  %temperature
 
-thermostat = 2; 
+thermostats = [2,4,6,8,10,20]; 
 
 D = friction*temperature; %0.01; 
 %noise = sqrt(2.0*friction*temperature/timestep);
@@ -32,7 +32,7 @@ synthetic = [];
 % parameters for the active brownian agens. Additional ones are: gamma(r)
 % additive friction, U(r) potential field, or modify q(r) as an intake
 % field. Here, q is only constant. Noise is the same as with passive BP.
-q0 = [0, 1.5];    % energy intake from the environment
+q0 = [0, 0.3, 0.5, 0.7, 0.9, 1.1];    % energy intake from the environment
 food_radius = 1e20;
 food_center = [80*sigma*0.5 80*sigma*0.5];
 % q = @(x1, x2) q0 * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
@@ -60,7 +60,7 @@ phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
 disp("Filling fraction is " + phi)
 
 % 
-% agent_coor = initialize_agents(n_agent(k), sigma, box_length);
+agent_coor = initialize_agents(n_agent(k), sigma, box_length);
 agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
 % 
 % % To start from a previous step
@@ -79,17 +79,20 @@ agent_velo = zeros(n_agent(k),2);%sqrt(2*D*h)*bivariate_normal(n_agent(k));
 %     
 % % % To start with agent 1 in a box of other agents but not centered
 % % For synthetic ones
-            synthetic = [2:n_agent(k)];
-            agent_coor = [ [(box_length/2+10*sigma); ones((n_agent(k)-1)/4,1)*(box_length/2- (n_agent(k)-1)*sigma/8); ...
-            ones((n_agent(k)-1)/4,1)*(box_length/2 + (n_agent(k)-1)*sigma/8); ...
-            [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]' ; ...
-            [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]'] ...
-            [(box_length/2+10*sigma) ; [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]' ;...
-            [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]';...
-            ones((n_agent(k)-1)/4,1)*(box_length/2- (n_agent(k)-1)*sigma/8);...
-            ones((n_agent(k)-1)/4,1)*(box_length/2 +  (n_agent(k)-1)*sigma/8)]];
-% 
-
+%             synthetic = [2:n_agent(k)];
+%             agent_coor = [ [(box_length/2+10*sigma); ones((n_agent(k)-1)/4,1)*(box_length/2- (n_agent(k)-1)*sigma/8); ...
+%             ones((n_agent(k)-1)/4,1)*(box_length/2 + (n_agent(k)-1)*sigma/8); ...
+%             [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]' ; ...
+%             [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]'] ...
+%             [(box_length/2+10*sigma) ; [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]' ;...
+%             [(box_length/2 - (n_agent(k)-1)*sigma/8 +sigma ):sigma:(box_length/2 + (n_agent(k)-1)*sigma/8)]';...
+%             ones((n_agent(k)-1)/4,1)*(box_length/2- (n_agent(k)-1)*sigma/8);...
+%             ones((n_agent(k)-1)/4,1)*(box_length/2 +  (n_agent(k)-1)*sigma/8)]];
+%   
+            % For two agents
+%             di = 2;
+%             agent_coor = [40-di 40; 40+di 40];
+            
 force_init = repulsion(agent_coor, sigma, box_length, repul_strength, repul_type);
 
 q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
@@ -111,34 +114,43 @@ if false
 fig = figure(1);
 plot_agents(agent_coor, sigma, box_length, force_init, 1)
 
-e_cef = [0 0];
-for loopa = 1:1
-gyrations = zeros(n_traj,1);
-traj_mean = zeros(n_traj,2);
-traj_init=zeros(n_traj,2);
-cef = [0 0];
-for tr = 1:n_traj
-   [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
+% e_cef = [0 0];
+% for loopa = 1:100
+% gyrations = zeros(n_traj,1);
+% traj_mean = zeros(n_traj,2);
+% traj_init=zeros(n_traj,2);
+% cef = [0 0];
+% for tr = 1:n_traj
+%    [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
+%      n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
+% %      plot_trajectory(bound, box_length, rand(1,3))
+%     gyrations(tr) = calc_gyration(my_virt_traj);
+%     traj_mean(tr,:) = mean(my_virt_traj-agent_coor(1,:) ,1);
+% end
+% mean_gyr = mean(gyrations);
+% for j=1:n_traj
+%     norm_gyr = log(gyrations(j)/mean_gyr);
+% %     dotp = dot(traj_init(j,:), traj_mean(j,:));
+% %     disp([traj_init(j,:), traj_mean(j,:), norm_gyr, dotp/abs(dotp), norm_gyr*[traj_init(j,1) traj_init(j,2)]*(dotp/abs(dotp))])
+%     cef = cef + norm_gyr*[traj_init(j,1) traj_init(j,2)];%*(dotp/abs(dotp));
+% end
+% cef = cef/n_traj;
+% e_cef = e_cef + cef;
+% hold on
+% quiver(agent_coor(1,1), agent_coor(1,2), cef(1)*n_traj, cef(2)*n_traj, 'AutoScale','off');
+% end
+% quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj, e_cef(2)*n_traj, 'AutoScale','off', 'LineWidth',4);
+% % xlim([38,42])
+% % ylim([38,42])
+% end
+agent_coor = [0 0];
+for j = 1:n_traj
+    [my_virt_traj, my_virt_velo, bound, traj_init(tr,:)] =  virtual_traj(agent_coor, agent_velo, 1, ...
      n_vsteps, sigma, box_length, repul_strength, friction, D, h, v_repul_type, d2, a, c, q);
      plot_trajectory(bound, box_length, rand(1,3))
-    gyrations(tr) = calc_gyration(my_virt_traj);
-    traj_mean(tr,:) = mean(my_virt_traj-agent_coor(1,:) ,1);
 end
-mean_gyr = mean(gyrations);
-for j=1:n_traj
-    norm_gyr = log(gyrations(j));%/mean_gyr);
-    dotp = dot(traj_init(j,:), traj_mean(j,:));
-%     disp([traj_init(j,:), traj_mean(j,:), norm_gyr, dotp/abs(dotp), norm_gyr*[traj_init(j,1) traj_init(j,2)]*(dotp/abs(dotp))])
-    cef = cef + norm_gyr*[traj_init(j,1) traj_init(j,2)]*(dotp/abs(dotp));
-end
-cef = cef/n_traj;
-e_cef = e_cef + cef;
-hold on
-quiver(agent_coor(1,1), agent_coor(1,2), cef(1)*n_traj*10, cef(2)*n_traj*10, 'AutoScale','off');
-end
-quiver(agent_coor(1,1), agent_coor(1,2), e_cef(1)*n_traj/10, e_cef(2)*n_traj/10, 'AutoScale','off', 'LineWidth',4);
-% xlim([38,42])
-% ylim([38,42])
+xlim([-10, 10]);
+ylim([-10, 10])
 end
 
 %% ---------- To visualize all virtual trajectories of all agents ---------
@@ -157,6 +169,7 @@ end
 %% ---- To visualize everything, solve the full problem, chunk below ------
 % % % 
 if true
+    for it = 1:length(thermostats)
 for iq = 1:length(q0)
     for l=1:length(n_vsteps)
         for k=1:length(n_agent)
@@ -165,15 +178,21 @@ for iq = 1:length(q0)
                     % Filling fraction:
             phi = n_agent(k) * pi * sigma^2 / (4* box_length^2);
             disp("Filling fraction is " + phi)
+            thermostat = thermostats(it);
 
 
             %% ------------- Initialization--------------------------------------------
-            agent_coor = initialize_agents(n_agent(k), sigma, box_length);
+%             agent_coor = initialize_agents(n_agent(k), sigma, box_length);
             agent_velo = zeros(n_agent(k),2);
 
             % To start from a previous step
             % agent_coor = [all_x(:,1000) all_y(: , 1000)];
             % agent_velo = [vel_x(:,1000) vel_y(: , 1000)];
+            
+            %for testing two agents only
+            dist = 2;
+            agent_coor = [(40-dist) 40; (40+dist) 40];
+%             agent_velo = zeros(n_agent(k),2);
 
 %             For synthetic ones
 %             synthetic = [2:n_agent];
@@ -192,7 +211,8 @@ for iq = 1:length(q0)
 
             q = @(x1, x2) q0(iq) * ( ((x1-food_center(1))^2 + (x2-food_center(2))^2) < food_radius^2 );
             
-            dir_name = strcat("original/n" + n_agent(k) + "_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq));
+            dir_name = strcat("synthabp/n" + n_agent(k) + "_vsteps"+n_vsteps(l)+"_ntraj"+n_traj+"_steps"+n_steps+"_q"+q0(iq)+'_t'...
+                +thermostats(it)+"_repeat" + 1);
             mkdir(dir_name)
 
             [all_x, all_y, vel_x, vel_y, lambda, all_cfx, all_cfy] = cef_solver( agent_coor,...
@@ -218,6 +238,7 @@ for iq = 1:length(q0)
         end
     end
 end
+    end
 end
 
 
@@ -387,7 +408,7 @@ function force_rep = repulsion_agent(agent_coordinates, i, ...
         xij = agent_coordinates(i,1) - enriched_coordinates(:,1)' ;
         yij = agent_coordinates(i,2) - enriched_coordinates(:,2)' ;
         rij = sqrt(xij.^2 + yij.^2);
-        rr = diameter;
+        rr = 2* diameter;
         fijx = strength * (1 - rij/rr) .* xij ./rij;
         fijy = strength * (1 - rij/rr) .* yij ./rij;
 
@@ -409,7 +430,7 @@ function force_rep = repulsion_agent(agent_coordinates, i, ...
         xij = agent_coordinates(i,1) - enriched_coordinates(:,1)' ;
         yij = agent_coordinates(i,2) - enriched_coordinates(:,2)' ;
         rij = sqrt(xij.^2 + yij.^2);
-        rr = diameter;
+        rr = 2*diameter;
         fijx = strength .* xij ./rij;
         fijy = strength .* yij ./rij;
 
@@ -550,7 +571,7 @@ function gyration = calc_gyration(trajectory)
         gyration = gyration + (trajectory(i,:) - mean_gyration).^2 ;
     end
     gyration = gyration/(length(trajectory)-1);
-    gyration = gyration(1)^2 + gyration(2)^2;
+    gyration = gyration(1) + gyration(2);
 
 end
 % -------------------------------------------------------------------------
@@ -791,7 +812,7 @@ end
 % -------------------------------------------------------------------------
 function plot_agents(agent_coordinates, diameter, box_length, forces, scl)
     theta = 0:0.01:2*pi;
-    for k = 1: length(agent_coordinates)
+    for k = 1: size(agent_coordinates,1)
         xCenter = agent_coordinates(k,1);
         yCenter = agent_coordinates(k,2);
         thisX = diameter * 0.5 * cos(theta) + xCenter;
